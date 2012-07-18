@@ -373,7 +373,7 @@ double l ;
 }
 
 /* test transformation matrix to zero */
-void tran_zero(void)
+void tran_zero()
 {
   int i, j;
   for (i=0; i<6; i++) { for (j=0; j<6; j++) { T[i][j] = 0.0 ; } }
@@ -398,7 +398,7 @@ double c ;
 }
 
 /* fils "ke" with content of "keg" */
-void ke_switch(void)
+void ke_switch()
 {
   int i, j;
   for (i=0; i<6; i++) { for (j=0; j<6; j++) { ke[i][j] = keg[i][j] ; } }
@@ -467,7 +467,7 @@ double c ;
   }
 }
 
-void stiff(void)
+void stiff()
 {
   long i ;
   int type ;
