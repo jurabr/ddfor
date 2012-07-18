@@ -1,0 +1,4 @@
+Simple direct stiffness method solver (for statics of frames).
+
+This program is written in K&R syntax of the C programming language.
+It is meant for retrocomputing (computers from 80').
