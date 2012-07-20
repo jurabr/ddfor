@@ -5,74 +5,74 @@
  */
 
 #include <stdio.h>
-#include <stdlib.h>
+/*#include <stdlib.h>*/
 #include <math.h>
 
-long    n_nodes = 0 ;
-long    n_elems = 0 ;
-long    n_disps = 0 ;
-long    n_nfors = 0 ;
-long    n_eload = 0 ;
+int    n_nodes = 0 ;
+int    n_elems = 0 ;
+int    n_disps = 0 ;
+int    n_nfors = 0 ;
+int    n_eload = 0 ;
 
-double *x_i = NULL ;
-double *y_i = NULL ;
+float *x_i = NULL ;
+float *y_i = NULL ;
 
-double *E = NULL ;
-double *A = NULL ;
-double *I = NULL ;
-long   *n1 = NULL ;
-long   *n2 = NULL ;
+float *E = NULL ;
+float *A = NULL ;
+float *I = NULL ;
+int   *n1 = NULL ;
+int   *n2 = NULL ;
 int    *type = NULL ;
 
-long   *d_n = NULL ; /* node */
+int   *d_n = NULL ; /* node */
 int    *d_d = NULL ; /* direction 1=x 2=y 3=rot */
-double *d_v = NULL ; /* size */
+float *d_v = NULL ; /* size */
 
-long   *f_n = NULL ; /* node */
+int   *f_n = NULL ; /* node */
 int    *f_d = NULL ; /* direction 1=fx 2=fy 3=m */
-double *f_v = NULL ; /* size */
+float *f_v = NULL ; /* size */
 
-long   *l_e = NULL ; /* node */
+int   *l_e = NULL ; /* node */
 int    *l_d = NULL ; /* direction 1=x 2=y, 3=x global, 4=y global */
-double *l_v1 = NULL ; /* size at beginning */
-double *l_v2 = NULL ; /* size at end */
+float *l_v1 = NULL ; /* size at beginning */
+float *l_v2 = NULL ; /* size at end */
 
 /* solution variables: */
-double  ke[6][6] ;
-double  keg[6][6] ;
-double  T[6][6] ;
-double  fe[6];
-double  feg[6];
-double  ueg[6];
+float  ke[6][6] ;
+float  keg[6][6] ;
+float  T[6][6] ;
+float  fe[6];
+float  feg[6];
+float  ueg[6];
 
-double  **K ;
-double   *F = NULL ;
-double   *u = NULL ;
+float  **K ;
+float   *F = NULL ;
+float   *u = NULL ;
 
 /** Reading of data from file */
 int read_data(fw)
 FILE *fw ;
 {
-  long i;
+  int i;
 
   fprintf(stderr,"Number of nodes:\n");
-  fscanf(fw,"%li", &n_nodes);
+  fscanf(fw,"%d", &n_nodes);
   if (n_nodes <= 0)
   {
     fprintf(stderr,"No nodes!\n");
     return(-1);
   }
-  fprintf(stderr,"  Declared %li nodes.\n", n_nodes);
+  fprintf(stderr,"  Declared %d nodes.\n", n_nodes);
 
   /* allocate data for nodes */
-  if ((x_i=(double *)malloc(n_nodes*sizeof(double))) == NULL)
+  if ((x_i=(float *)malloc(n_nodes*sizeof(float))) == NULL)
   {
     fprintf(stderr,"Can't allocate X coordinates!\n");
     return(-2);
   }
 
   fprintf(stderr,"Coordinates of nodes (x y):\n");
-  if ((y_i=(double *)malloc(n_nodes*sizeof(double))) == NULL)
+  if ((y_i=(float *)malloc(n_nodes*sizeof(float))) == NULL)
   {
     free(x_i);
     fprintf(stderr,"Can't allocate Y coordinates!\n");
@@ -82,47 +82,48 @@ FILE *fw ;
   /* read coordinates of nodes */
   for (i=0; i<n_nodes; i++)
   {
-    fscanf(fw,"%lf %lf", &x_i[i], &y_i[i]) ;
+    fscanf(fw,"%e %e", &x_i[i], &y_i[i]) ;
+    printf(" %e %e\n", x_i[i], y_i[i]) ;
   }
-  fprintf(stderr,"  Have %li coordinaes.\n",n_nodes);
+  fprintf(stderr,"  Have %d coordinates.\n",n_nodes);
 
 
   /* number of elements */
   fprintf(stderr,"Number of elements:\n");
-  fscanf(fw,"%li", &n_elems);
+  fscanf(fw,"%d", &n_elems);
   if (n_elems <= 0)
   {
     free(x_i); free(y_i); 
     fprintf(stderr,"No elements!\n");
     return(-1);
   }
-  fprintf(stderr,"  Declared %li elements.\n", n_elems);
+  fprintf(stderr,"  Declared %d elements.\n", n_elems);
 
-  if ((n1=(long *)malloc(n_elems*sizeof(long))) == NULL)
+  if ((n1=(int *)malloc(n_elems*sizeof(int))) == NULL)
   {
     free(x_i); free(y_i); 
     fprintf(stderr,"Can't allocate node positions!\n");
     return(-2);
   }
-  if ((n2=(long *)malloc(n_elems*sizeof(long))) == NULL)
+  if ((n2=(int *)malloc(n_elems*sizeof(int))) == NULL)
   {
     free(x_i); free(y_i); free(n1);
     fprintf(stderr,"Can't allocate node positions!\n");
     return(-2);
   }
-  if ((E=(double *)malloc(n_elems*sizeof(double))) == NULL)
+  if ((E=(float *)malloc(n_elems*sizeof(float))) == NULL)
   {
     free(x_i); free(y_i); free(n1); free(n2);
     fprintf(stderr,"Can't allocate stifnesses!\n");
     return(-2);
   }
-  if ((A=(double *)malloc(n_elems*sizeof(double))) == NULL)
+  if ((A=(float *)malloc(n_elems*sizeof(float))) == NULL)
   {
     free(x_i); free(y_i); free(n1); free(n2);free(E);
     fprintf(stderr,"Can't allocate areas!\n");
     return(-2);
   }
-  if ((I=(double *)malloc(n_elems*sizeof(double))) == NULL)
+  if ((I=(float *)malloc(n_elems*sizeof(float))) == NULL)
   {
     free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);
     fprintf(stderr,"Can't allocate moments of inertia!\n");
@@ -139,22 +140,23 @@ FILE *fw ;
   /* read element data */
   for (i=0; i<n_elems; i++)
   {
-    fscanf(fw,"%i %li %li %lf %lf %lf",&type[i], &n1[i], &n2[i], &E[i], &A[i], &I[i]) ;
+    fscanf(fw,"%d %d %d %e %e %e",&type[i], &n1[i], &n2[i], &E[i], &A[i], &I[i]) ;
+    printf("%d %d %d %e %e %e\n",type[i], n1[i], n2[i], E[i], A[i], I[i]) ;
   }
-  fprintf(stderr,"  Have %li elements.\n",n_elems);
+  fprintf(stderr,"  Have %d elements.\n",n_elems);
 
   /* supports */
   fprintf(stderr,"Number of supports:\n");
-  fscanf(fw,"%li", &n_disps);
+  fscanf(fw,"%d", &n_disps);
   if (n_disps <= 0)
   {
     free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
     fprintf(stderr,"No supports!\n");
     return(-1);
   }
-  fprintf(stderr,"  Declared %li supports.\n", n_disps);
+  fprintf(stderr,"  Declared %d supports.\n", n_disps);
 
-  if ((d_n=(long *)malloc(n_disps*sizeof(long))) == NULL)
+  if ((d_n=(int *)malloc(n_disps*sizeof(int))) == NULL)
   {
     free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
     fprintf(stderr,"Can't allocate nodes for supports!\n");
@@ -167,7 +169,7 @@ FILE *fw ;
     fprintf(stderr,"Can't allocate types of supports!\n");
     return(-2);
   }
-  if ((d_v=(double *)malloc(n_disps*sizeof(double))) == NULL)
+  if ((d_v=(float *)malloc(n_disps*sizeof(float))) == NULL)
   {
     free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
     free(d_n);free(d_d);
@@ -179,14 +181,15 @@ FILE *fw ;
   /* read supports data */
   for (i=0; i<n_disps; i++)
   {
-    fscanf(fw,"%li %i %lf",&d_n[i], &d_d[i], &d_v[i]) ;
+    fscanf(fw,"%d %d %e",&d_n[i], &d_d[i], &d_v[i]) ;
+    printf("%d %d %e\n",d_n[i], d_d[i], d_v[i]) ;
   }
-  fprintf(stderr,"  Have %li supports.\n",n_nfors);
+  fprintf(stderr,"  Have %d supports.\n",n_nfors);
 
 
   /* forces in nodes */
   fprintf(stderr,"Number of forces in nodes:\n");
-  fscanf(fw,"%li", &n_nfors);
+  fscanf(fw,"%d", &n_nfors);
   if (n_nfors <= 0)
   {
     free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
@@ -194,9 +197,9 @@ FILE *fw ;
     fprintf(stderr,"No forces in nodes!\n");
     return(-1);
   }
-  fprintf(stderr,"  Declared %li forces in nodes.\n", n_nfors);
+  fprintf(stderr,"  Declared %d forces in nodes.\n", n_nfors);
 
-  if ((f_n=(long *)malloc(n_nfors*sizeof(long))) == NULL)
+  if ((f_n=(int *)malloc(n_nfors*sizeof(int))) == NULL)
   {
     free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
     free(d_n);free(d_d);free(d_v);
@@ -211,7 +214,7 @@ FILE *fw ;
     fprintf(stderr,"Can't allocate types of forces!\n");
     return(-2);
   }
-  if ((f_v=(double *)malloc(n_nfors*sizeof(double))) == NULL)
+  if ((f_v=(float *)malloc(n_nfors*sizeof(float))) == NULL)
   {
     free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
     free(d_n);free(d_d);free(d_v);
@@ -224,14 +227,15 @@ FILE *fw ;
   /* read supports data */
   for (i=0; i<n_nfors; i++)
   {
-    fscanf(fw,"%li %i %lf",&f_n[i], &f_d[i], &f_v[i]) ;
+    fscanf(fw,"%d %d %e",&f_n[i], &f_d[i], &f_v[i]) ;
+    printf("%d %d %e\n",f_n[i], f_d[i], f_v[i]) ;
   }
-  fprintf(stderr,"  Have %li forces in nodes.\n",n_nfors);
+  fprintf(stderr,"  Have %d forces in nodes.\n",n_nfors);
 
 
   /* loads on elements */
   fprintf(stderr,"Number of element loads:\n");
-  fscanf(fw,"%li", &n_eload);
+  fscanf(fw,"%d", &n_eload);
   if (n_eload <= 0)
   {
     free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
@@ -240,9 +244,9 @@ FILE *fw ;
     fprintf(stderr,"No element loads!\n");
     return(-1);
   }
-  fprintf(stderr,"  Declared %li element loads.\n", n_eload);
+  fprintf(stderr,"  Declared %d element loads.\n", n_eload);
 
-  if ((l_e=(long *)malloc(n_eload*sizeof(long))) == NULL)
+  if ((l_e=(int *)malloc(n_eload*sizeof(int))) == NULL)
   {
     free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
     free(d_n);free(d_d);free(d_v);
@@ -259,7 +263,7 @@ FILE *fw ;
     fprintf(stderr,"Can't allocate types of loads!\n");
     return(-2);
   }
-  if ((l_v1=(double *)malloc(n_eload*sizeof(double))) == NULL)
+  if ((l_v1=(float *)malloc(n_eload*sizeof(float))) == NULL)
   {
     free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
     free(d_n);free(d_d);free(d_v);
@@ -268,7 +272,7 @@ FILE *fw ;
     fprintf(stderr,"Can't allocate sizes of loads!\n");
     return(-2);
   }
-  if ((l_v2=(double *)malloc(n_eload*sizeof(double))) == NULL)
+  if ((l_v2=(float *)malloc(n_eload*sizeof(float))) == NULL)
   {
     free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
     free(d_n);free(d_d);free(d_v);
@@ -282,9 +286,10 @@ FILE *fw ;
   /* read supports data */
   for (i=0; i<n_eload; i++)
   {
-    fscanf(fw,"%li %i %lf %lf",&l_e[i], &l_d[i], &l_v1[i], &l_v2[i]) ;
+    fscanf(fw,"%d %d %e %e",&l_e[i], &l_d[i], &l_v1[i], &l_v2[i]) ;
+    printf("%d %d %e %e\n",l_e[i], l_d[i], l_v1[i], l_v2[i]) ;
   }
-  fprintf(stderr,"  Have %li element loads.\n",n_eload);
+  fprintf(stderr,"  Have %d element loads.\n",n_eload);
 
   return(0);
 }
@@ -292,13 +297,13 @@ FILE *fw ;
 /** Local stiffness matrix */
 void stiff_loc(type, E, A, I, l)
 int type ;
-double E ;
-double A ;
-double I ;
-double l ;
+float E ;
+float A ;
+float I ;
+float l ;
 {
   int i, j ;
-  double tuh ;
+  float tuh ;
 
   for (i=0; i<6; i++)
   {
@@ -383,8 +388,8 @@ void tran_zero()
 
 /** Transformation matrix */
 void tran(s, c)
-double s ;
-double c ;
+float s ;
+float c ;
 {
   T[0][0] = c ;
   T[0][1] = s ;
@@ -408,8 +413,8 @@ void ke_switch()
 
 /** Transposed transformation matrix */
 void tran_t(s, c)
-double s ;
-double c ;
+float s ;
+float c ;
 {
   T[0][0] = c ;
   T[0][1] = (-s) ;
@@ -423,11 +428,11 @@ double c ;
 }
 
 void ke_to_keg(s, c)
-double s ;
-double c ;
+float s ;
+float c ;
 {
   int i,j,k;
-  double fval, kval ;
+  float fval, kval ;
 
   tran_t(s, c);
 
@@ -469,10 +474,10 @@ double c ;
 
 void stiff()
 {
-  long i ;
+  int i ;
   int type ;
-  double x1,y1, x2,y2, l, s, c ;
-  double E, A, I ;
+  float x1,y1, x2,y2, l, s, c ;
+  float E, A, I ;
 
   for (i=0; i<n_elems; i++)
   {
@@ -518,7 +523,7 @@ char *argv[];
     }
   }
 
-  stiff();
+  stiff(); 
 
   return(0);
 }
