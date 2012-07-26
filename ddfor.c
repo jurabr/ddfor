@@ -258,7 +258,7 @@ FILE *fw ;
   {
     free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
     free(d_n);free(d_d);free(d_v);
-    free(f_n);free(f_d);free(f_v);
+    if (n_nfors > 0){ free(f_n);free(f_d);free(f_v);}
     free(l_e);
     fprintf(stderr,"Can't allocate types of loads!\n");
     return(-2);
@@ -267,7 +267,7 @@ FILE *fw ;
   {
     free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
     free(d_n);free(d_d);free(d_v);
-    free(f_n);free(f_d);free(f_v);
+    if (n_nfors > 0){ free(f_n);free(f_d);free(f_v);}
     free(l_e);free(l_d);
     fprintf(stderr,"Can't allocate sizes of loads!\n");
     return(-2);
@@ -276,7 +276,8 @@ FILE *fw ;
   {
     free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
     free(d_n);free(d_d);free(d_v);
-    free(f_n);free(f_d);free(f_v);
+
+    if (n_nfors > 0){ free(f_n);free(f_d);free(f_v);}
     free(l_e);free(l_d);free(l_v1);
     fprintf(stderr,"Can't allocate sizes of loads!\n");
     return(-2);
@@ -375,6 +376,11 @@ float l ;
     case 3: /* o--o .. nothing to do */
       break;
   }
+}
+
+int band()
+{
+  return(0);
 }
 
 /* test transformation matrix to zero */
@@ -496,6 +502,33 @@ void stiff()
   }
 }
 
+/** Frees all allocated data */
+void free_data()
+{
+  if (n_nodes > 0)
+  {
+    free(x_i); free(y_i);
+  }
+  if (n_elems > 0)
+  {
+    free(n1); free(n2);free(E);free(A);free(I);
+  }
+  if (n_disps > 0)
+  {
+    free(d_n);free(d_d);free(d_v);
+  }
+  if (n_nfors > 0)
+  {
+    free(f_n);free(f_d);free(f_v);
+  }
+  if (n_eload > 0)
+  {
+    free(l_e);free(l_d);free(l_v1);free(l_v2);
+  }
+
+  /* TODO: free K,F,u... */
+}
+
 int main(argc, argv)
 int argc ;
 char *argv[];
@@ -524,6 +557,8 @@ char *argv[];
   }
 
   stiff(); 
+
+  free_data();
 
   return(0);
 }
