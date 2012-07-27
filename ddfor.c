@@ -378,12 +378,41 @@ float l ;
   }
 }
 
+/* band size computation routine */
 int band()
 {
-  return(0);
+  int max = 0 ;
+  int i;
+	int nind;
+	int ni1, ni2;
+
+	for (i=0;i<n_elems; i++)
+	{
+	   ni1 =n1[i];
+	   ni2 =n2[i];
+		 if (ni2<ni1)
+		 {
+		   nind=ni2;
+			 ni2=ni1;
+			 ni1=nind;
+		 }
+		 nind=3*(ni2-1)+3-3*(ni1-1)-1;
+		 if (max < nind) max=nind;
+	}
+	if (max == 0)
+	{
+	  /* if failed */
+		fprintf(stderr,"Band computing failed");
+	}
+	else
+	{
+	  max *= 2 ;
+		max += 1 ;
+	}
+	return(max);
 }
 
-/* test transformation matrix to zero */
+/* set transformation matrix to zero */
 void tran_zero()
 {
   int i, j;
