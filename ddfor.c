@@ -570,19 +570,21 @@ void stiff()
   int i ;
   int type ;
   float x1,y1, x2,y2, l, s, c ;
-  float E, A, I ;
 
   for (i=0; i<n_elems; i++)
   {
-    /* TODO: read x,y ; */
-    /* TODO: read type, E, A, I ; */
+    x1 = x_i[n1[i]-1] ;
+    y1 = y_i[n1[i]-1] ;
+    x2 = x_i[n2[i]-1] ;
+    y2 = y_i[n2[i]-1] ;
+    
     l = sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)) ;
-    if (l <= 0.0) {continue;} /* ops, zero length element */
+    if (l <= 0.0) {continue;} /* oops, zero length element */
     s = (y2-y1)/l ;
     c = (x2-x1)/l ;
     
     tran_zero();
-    stiff_loc(type, E, A, I, l) ;
+    stiff_loc(type, E[i], A[i], I[i], l) ;
     ke_to_keg(s, c) ;
 
     /* TODO: localisation */
