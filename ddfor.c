@@ -14,6 +14,8 @@ int    n_disps = 0 ;
 int    n_nfors = 0 ;
 int    n_eload = 0 ;
 
+int    n_dofs  = 0 ;
+
 float *x_i = NULL ;
 float *y_i = NULL ;
 
@@ -47,7 +49,6 @@ float  ueg[6];
 
 float  **K ;
 float   *F = NULL ;
-float   *u = NULL ;
 
 /** Reading of data from file */
 int read_data(fw)
@@ -292,6 +293,60 @@ FILE *fw ;
   }
   fprintf(stderr,"  Have %d element loads.\n",n_eload);
 
+
+  n_dofs = n_nodes * 3 ;
+  fprintf(stderr,"  Problem size is: %d.\n",n_dofs);
+
+  return(0);
+}
+
+/* Allocates space for linear system */
+int alloc_kf(dofs, rows)
+int dofs;
+int rows;
+{
+  int i,j;
+
+  if ((K = (float **)malloc((dofs+1)*sizeof(float *))) == NULL)
+  {
+    return(-1);
+  }
+  else
+  {
+    K[0] = NULL ;
+    for (i=1; i<=dofs; i++)
+    {
+      if ((K[i] = (float *)malloc((rows+1)*sizeof(float))) == NULL)
+      {
+        for (j=1; j<i; j++)
+        {
+          free(K[j]) ; K[j] = NULL ;
+        }
+        free(K); K = NULL ;
+        fprintf(stderr,"No space for K matrix (stopped at %d row)!\n",i);
+        return(-2);
+      }
+      else
+      {
+        for (j=1; j<=rows; j++)
+        {
+          K[i][j] = 0.0 ;
+        }
+      }
+    }
+
+    if ((F = (float *)malloc((dofs+1)*sizeof(float))) == NULL)
+    {
+      for (j=1; j<=dofs; j++)
+      {
+        free(K[j]) ; K[j] = NULL ;
+      }
+      free(K); K = NULL ;
+      fprintf(stderr,"No space for F matrix!\n");
+      return(-2);
+    }
+  }
+
   return(0);
 }
 
@@ -396,9 +451,10 @@ int band()
 			 ni2=ni1;
 			 ni1=nind;
 		 }
-		 nind=3*(ni2-1)+3-3*(ni1-1)-1;
+		 nind=3*(ni2-1)+3-3*(ni1-1);
 		 if (max < nind) max=nind;
 	}
+  fprintf(stderr,"  MAX: %d\n",max);
 	if (max == 0)
 	{
 	  /* if failed */
@@ -406,8 +462,10 @@ int band()
 	}
 	else
 	{
+    /*
 	  max *= 2 ;
 		max += 1 ;
+    */
 	}
 	return(max);
 }
@@ -531,6 +589,73 @@ void stiff()
   }
 }
 
+/** Gauss elimination */
+int solve_band(K,F, k_band)
+float **K;
+float  *F;
+int     k_band;
+{
+  int i,j,k, r,h,g;
+  float eps ;
+
+  r = (int)((k_band+1)/2) ;
+  eps = 1e-6 ;
+
+  /* L-U decomposition routine: */
+  for (k=1; k<=n_dofs; k++)
+  {
+    if (fabs(K[k][r]) <= eps) {break;}
+    K[k][r] = 1.0 / K[k][r] ;
+    h = r - 1 ;
+    i = k + 1 ;
+    if ((h>=1)||(i <= n_dofs))
+    {
+      K[i][h] = K[i][h] * K[k][r] ;
+      j = h + 1 ;
+      g = r + 1 ;
+      
+      if ( (g<=k_band) || (j<=(r+n_dofs-1)) )
+      {
+        K[i][j] = K[i][j] - (K[i][h]*K[i][g]) ;
+        j = j + 1;
+        g = g + 1;
+      }
+      i = i + 1;
+      h = h - 1;
+    }
+  }
+
+  /* forward routine: */
+  for (k=1; k<=(n_dofs-1); k++)
+  {
+    i = k + 1 ;
+    j = r - 1 ;
+
+    if ( (j >= 1) || (i <= n_dofs))
+    {
+      F[i] = F[i] - K[i][j]*F[k] ;
+      i = i + 1 ;
+      j = j - 1 ;
+    }
+  }
+
+  /* backward routine: */
+  for (k=n_dofs; k>=1; k--)
+  {
+    i = k + 1 ;
+    j = r + 1 ;
+    if ((j<=k_band) || (i<=n_dofs))
+    {
+      F[k] = F[k] - K[k][j]*F[i] ;
+      i = i + 1 ;
+      j = j + 1 ;
+    }
+    F[k] = F[k] * K[k][r] ;
+  }
+
+  return(0);
+}
+
 /** Frees all allocated data */
 void free_data()
 {
@@ -554,8 +679,18 @@ void free_data()
   {
     free(l_e);free(l_d);free(l_v1);free(l_v2);
   }
+}
 
-  /* TODO: free K,F,u... */
+/** free K,F */
+void free_sol_data()
+{
+  int j ;
+  for (j=1; j<=n_dofs; j++)
+  {
+    free(K[j]) ; K[j] = NULL ;
+  }
+  free(K); K = NULL ;
+  free(F); F = NULL ;
 }
 
 int main(argc, argv)
@@ -563,6 +698,7 @@ int argc ;
 char *argv[];
 {
   FILE *fw = NULL ;
+  int   n_band = 0 ;
 
   if (argc < 2)
   {
@@ -575,7 +711,7 @@ char *argv[];
     /* read from file */
     if ((fw=fopen(argv[1],"r")) == NULL)
     {
-      fprintf(stderr,"FAiled to open input file!\n");
+      fprintf(stderr,"Failed to open input file!\n");
       return(-1);
     }
     else
@@ -585,9 +721,20 @@ char *argv[];
     }
   }
 
+  n_band = band() ;
+  printf("Matrix band size is %d, total size is %d.\n", n_band,n_nodes*3);
+
+  if (alloc_kf(n_dofs, n_band) != 0 )
+  {
+    free_data();
+    return(-1);
+  }
+
   stiff(); 
 
+
   free_data();
+  free_sol_data();
 
   return(0);
 }
