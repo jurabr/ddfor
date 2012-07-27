@@ -14,8 +14,6 @@ int    n_disps = 0 ;
 int    n_nfors = 0 ;
 int    n_eload = 0 ;
 
-int    n_dofs  = 0 ;
-
 float *x_i = NULL ;
 float *y_i = NULL ;
 
@@ -24,18 +22,18 @@ float *A = NULL ;
 float *I = NULL ;
 int   *n1 = NULL ;
 int   *n2 = NULL ;
-int    *type = NULL ;
+int   *type = NULL ;
 
 int   *d_n = NULL ; /* node */
-int    *d_d = NULL ; /* direction 1=x 2=y 3=rot */
+int   *d_d = NULL ; /* direction 1=x 2=y 3=rot */
 float *d_v = NULL ; /* size */
 
 int   *f_n = NULL ; /* node */
-int    *f_d = NULL ; /* direction 1=fx 2=fy 3=m */
+int   *f_d = NULL ; /* direction 1=fx 2=fy 3=m */
 float *f_v = NULL ; /* size */
 
 int   *l_e = NULL ; /* node */
-int    *l_d = NULL ; /* direction 1=x 2=y, 3=x global, 4=y global */
+int   *l_d = NULL ; /* direction 1=x 2=y, 3=x global, 4=y global */
 float *l_v1 = NULL ; /* size at beginning */
 float *l_v2 = NULL ; /* size at end */
 
@@ -47,8 +45,19 @@ float  fe[6];
 float  feg[6];
 float  ueg[6];
 
-float  **K ;
-float   *F = NULL ;
+int    K_len    = 0 ;
+int   *K_sizes  = NULL ; /* lenghts of K's rows */
+int   *K_from   = NULL ;
+int   *K_cols   = NULL ;
+float *K_val    = NULL ;
+float *F_val    = NULL ;
+float *u_val    = NULL ;
+
+float *M    = NULL ;
+float *r    = NULL ;
+float *z    = NULL ;
+float *p    = NULL ;
+float *q    = NULL ;
 
 /** Reading of data from file */
 int read_data(fw)
@@ -293,61 +302,251 @@ FILE *fw ;
   }
   fprintf(stderr,"  Have %d element loads.\n",n_eload);
 
-
-  n_dofs = n_nodes * 3 ;
-  fprintf(stderr,"  Problem size is: %d.\n",n_dofs);
-
   return(0);
 }
 
-/* Allocates space for linear system */
-int alloc_kf(dofs, rows)
-int dofs;
-int rows;
+/** free K,F */
+void free_sol_data()
 {
-  int i,j;
+  if (F_val != NULL )free(F_val);
+  if (u_val != NULL )free(u_val);
+  if (K_sizes != NULL )free(K_sizes);
+  if (K_from != NULL )free(K_from);
+  if (K_val != NULL )free(K_val);
 
-  if ((K = (float **)malloc((dofs+1)*sizeof(float *))) == NULL)
+  if (M != NULL )free(M);
+  if (r != NULL )free(r);
+  if (z != NULL )free(z);
+  if (p != NULL )free(p);
+  if (q != NULL )free(q);
+}
+
+/* Allocates space for linear system */
+int alloc_kf()
+{
+  int i,j, sum;
+
+  if ((K_sizes = (int *)malloc(3*n_nodes*sizeof(int)))   == NULL) { goto memFree ; }
+  if ((K_from  = (int *)malloc(3*n_nodes*sizeof(int)))   == NULL) { goto memFree ; } 
+  if ((F_val   = (float *)malloc(3*n_nodes*sizeof(float))) == NULL) { goto memFree ; } 
+  if ((u_val   = (float *)malloc(3*n_nodes*sizeof(float))) == NULL) { goto memFree ; } 
+
+  if ((M   = (float *)malloc(3*n_nodes*sizeof(float))) == NULL) { goto memFree ; } 
+  if ((r   = (float *)malloc(3*n_nodes*sizeof(float))) == NULL) { goto memFree ; } 
+  if ((z   = (float *)malloc(3*n_nodes*sizeof(float))) == NULL) { goto memFree ; } 
+  if ((p   = (float *)malloc(3*n_nodes*sizeof(float))) == NULL) { goto memFree ; } 
+  if ((q   = (float *)malloc(3*n_nodes*sizeof(float))) == NULL) { goto memFree ; } 
+
+  K_len = 0 ;
+
+  for (i=0; i<n_nodes*3; i++) 
+  { 
+    K_sizes[i] = 0 ; 
+    K_from[i]  = 0 ; 
+    F_val[i]   = 0.0 ; 
+    u_val[i]   = 0.0 ; 
+    M[i]       = 0.0 ; 
+    r[i]       = 0.0 ; 
+    z[i]       = 0.0 ; 
+    p[i]       = 0.0 ; 
+    q[i]       = 0.0 ; 
+  } 
+
+  for (i=0; i<n_nodes; i++)
   {
-    return(-1);
+    for (j=0; j<n_eload; j++)
+    {
+      if ((n1[j]-1) == i) 
+			{
+				K_sizes[3*i+0]+=6; 
+				K_sizes[3*i+1]+=6; 
+				K_sizes[3*i+2]+=6; 
+			}
+      if ((n2[j]-1) == i) 
+			{
+				K_sizes[3*i+0]+=6; 
+				K_sizes[3*i+1]+=6; 
+				K_sizes[3*i+2]+=6; 
+			}
+    }
   }
-  else
-  {
-    K[0] = NULL ;
-    for (i=1; i<=dofs; i++)
-    {
-      if ((K[i] = (float *)malloc((rows+1)*sizeof(float))) == NULL)
-      {
-        for (j=1; j<i; j++)
-        {
-          free(K[j]) ; K[j] = NULL ;
-        }
-        free(K); K = NULL ;
-        fprintf(stderr,"No space for K matrix (stopped at %d row)!\n",i);
-        return(-2);
-      }
-      else
-      {
-        for (j=1; j<=rows; j++)
-        {
-          K[i][j] = 0.0 ;
-        }
-      }
-    }
 
-    if ((F = (float *)malloc((dofs+1)*sizeof(float))) == NULL)
-    {
-      for (j=1; j<=dofs; j++)
-      {
-        free(K[j]) ; K[j] = NULL ;
-      }
-      free(K); K = NULL ;
-      fprintf(stderr,"No space for F matrix!\n");
-      return(-2);
-    }
+  sum = 0 ;
+
+  for (i=0; i<(n_nodes*3); i++)
+  {
+    K_from[i] = sum ;
+    sum += K_sizes[i] ;
+  }
+
+	K_len = sum ;
+
+  if ((K_cols = (int *)malloc(K_len*sizeof(int))) == NULL) { goto memFree ; } 
+  if ((K_val = (float *)malloc(K_len*sizeof(float))) == NULL) { goto memFree ; } 
+
+  for (i=0; i<K_len; i++)
+  {
+    K_cols[i] = -1 ;
+    K_val[i]  = 0.0 ;
   }
 
   return(0);
+memFree:
+  fprintf(stderr,"Not enough memory!");
+  free_sol_data();
+  return(-1);
+}
+
+double md_norm_K()
+{
+  int i,j ;
+  double MaxNorm = 0.0 ;
+  double Norm    = 0.0 ;
+  
+  for (i=0; i<(3*n_nodes); i++)
+	{
+	 	Norm = 0.0;
+		for (j=K_from[i]; j<K_from[i]+K_sizes[i]; j++)
+		{
+			if (K_cols[j] < 0) {break;}
+	  	Norm += (K_val[j]*K_val[j]);
+		}
+		Norm = sqrt(Norm);
+		if (Norm > MaxNorm) {MaxNorm = Norm;}
+	}
+  return(Norm);
+}
+
+double md_vec_norm(a, len)
+double *a;
+long len;
+{
+  int i ;
+  double Norm    = 0.0 ;
+  
+  for (i=0; i<len; i++) { Norm += (a[i]*a[i]); }
+  return(sqrt(Norm));
+}
+
+int solve_eqs()
+{
+  double ro, alpha, beta;
+	double roro = 0.0 ;
+	double normRes, normX, normA, normB;
+  double mval ;
+	int   converged = 0;
+	int   n = 0;
+	int   i,j,k;
+
+  n = 3*n_nodes ;
+
+	normA = md_norm_K();
+	normB = md_vec_norm(F_val, n);
+
+  if (normB <= 0.0) /* no loads - nothing to do */
+	{
+    fprintf(stderr,"No load found!\n");
+		return(0);
+	}
+
+  /* Jacobi preconditioner: */
+	for (i=0; i<n; i++) 
+	{ 
+		M[i] = 0.0 ;
+		for (j=K_from[i]; j<K_from[i]+K_sizes[i]; j++)
+		{
+			if (K_cols[j] == (i))
+			{
+				M[i] = K_val[j] ;
+				break ;
+			}
+		}
+
+		if (fabs(M[i]) < 1e-5) 
+		{ 
+	    fprintf(stderr,"zero value at [%i,%i]: %e\n",i+1,i+1, M[i]);
+			return( -1 ); 
+		}
+	}
+
+	/* r = b - A*x  */
+  for (i=0; i<n; i++)
+  {
+    mval = 0.0 ;
+
+    for (j=0; j<K_sizes[i]; j++)
+    {
+      if  (K_cols[K_from[i]+j] < 0) {break;}
+      mval += K_val[K_from[i]+j] * u_val[K_cols[K_from[i]+j]];
+    }
+    r[i] = mval ;
+  }
+  for (i=0; i<n; i++) { r[i] = F_val[i] - r[i] ; }
+
+  /* main loop */
+	for (i=1; i<=n; i++) 
+  { 
+    fprintf(stderr,"    CG iteration: %i/%i\n",i,n);
+    for (j=0; j<n; j++) { z[j] = (r[j] / M[j]) ; }
+
+    ro = 0.0 ;
+    for (j=0; j<n; j++) {ro += r[j]*z[j];}
+
+    if (i == 1)
+	  {
+	    for (j=0; j<n; j++) { p[j] = z[j]; }
+	  }
+	  else
+	  {
+		  beta = ro / roro ;
+	    for (j=0; j<n; j++) { p[j] = (z[j] + (beta*p[j])) ; }
+	  }
+
+
+    for (k=0; k<n; k++) /* q = K*p */
+    {
+      mval = 0.0 ;
+
+      for (j=0; j<K_sizes[k]; j++)
+      {
+        if  (K_cols[K_from[k]+j] < 0) {break;}
+        mval += K_val[K_from[k]+j] * p[K_cols[K_from[k]+j]];
+      }
+      q[k] = mval ;
+    }
+
+    mval = 0.0 ;
+    for (j=0; j<n; j++) {mval += p[j]*q[j];}
+	  alpha = ro / mval ;
+
+    for (j=0; j<n; j++) 
+	  { 
+		  u_val[j] = u_val[j] + (alpha * p[j])  ; 
+		  r[j] = r[j] - (alpha * q[j])  ; 
+	  } 
+
+
+		/* Convergence testing */
+
+	  normRes = md_vec_norm(r, n);
+	  normX   = md_vec_norm(u_val, n);
+
+    if (normRes  <= ((1e-6)*((normA*normX) + normB)) ) 
+		{
+			converged = 1;
+			break;
+		}
+
+		roro = ro;
+  
+  } /* end of main loop */
+
+  if (converged == 1) { return(0); }
+  else                
+	{
+		fprintf(stderr,"Unconverged solution!\n");
+		return(-1); 
+	}
 }
 
 /** Local stiffness matrix */
@@ -433,43 +632,6 @@ float l ;
   }
 }
 
-/* band size computation routine */
-int band()
-{
-  int max = 0 ;
-  int i;
-	int nind;
-	int ni1, ni2;
-
-	for (i=0;i<n_elems; i++)
-	{
-	   ni1 =n1[i];
-	   ni2 =n2[i];
-		 if (ni2<ni1)
-		 {
-		   nind=ni2;
-			 ni2=ni1;
-			 ni1=nind;
-		 }
-		 nind=3*(ni2-1)+3-3*(ni1-1);
-		 if (max < nind) max=nind;
-	}
-  fprintf(stderr,"  MAX: %d\n",max);
-	if (max == 0)
-	{
-	  /* if failed */
-		fprintf(stderr,"Band computing failed");
-	}
-	else
-	{
-    /*
-	  max *= 2 ;
-		max += 1 ;
-    */
-	}
-	return(max);
-}
-
 /* set transformation matrix to zero */
 void tran_zero()
 {
@@ -501,8 +663,6 @@ void ke_switch()
   int i, j;
   for (i=0; i<6; i++) { for (j=0; j<6; j++) { ke[i][j] = keg[i][j] ; } }
 }
-
-
 
 /** Transposed transformation matrix */
 void tran_t(s, c)
@@ -565,11 +725,41 @@ float c ;
   }
 }
 
-void stiff()
+/* puts data to the right place in K */
+void md_K_add(row, col, val)
+int row;
+int col;
+double val;
 {
   int i ;
+
+  for (i=K_from[row-1]; i<(K_from[row-1]+K_sizes[row-1]); i++)
+  {
+
+    if (K_cols[i] == (col-1))
+    {
+      K_val[i] += val ; 
+      return ;
+    }
+
+    if (K_cols[i] < 0)
+    {
+      K_cols[i] = (col-1) ;
+      K_val[i] = val ; 
+      return ;
+    }
+  }
+	fprintf(stderr,"Addition of [%i,%i] to K failed (%e)\n",row,col,val);
+  return; /* we should NOT reach this point */
+}
+
+/* computes stiffness matrix of the structure */
+void stiff()
+{
+  int i, j, k, ii, jj ;
   int type ;
   float x1,y1, x2,y2, l, s, c ;
+
 
   for (i=0; i<n_elems; i++)
   {
@@ -588,75 +778,23 @@ void stiff()
     ke_to_keg(s, c) ;
 
     /* TODO: localisation */
-  }
-}
-
-/** Gauss elimination */
-int solve_band(K,F, k_band)
-float **K;
-float  *F;
-int     k_band;
-{
-  int i,j,k, r,h,g;
-  float eps ;
-
-  r = (int)((k_band+1)/2) ;
-  eps = 1e-6 ;
-
-  /* L-U decomposition routine: */
-  for (k=1; k<=n_dofs; k++)
-  {
-    if (fabs(K[k][r]) <= eps) {break;}
-    K[k][r] = 1.0 / K[k][r] ;
-    h = r - 1 ;
-    i = k + 1 ;
-    if ((h>=1)||(i <= n_dofs))
+    for (k=0; k<6; k++)
     {
-      K[i][h] = K[i][h] * K[k][r] ;
-      j = h + 1 ;
-      g = r + 1 ;
-      
-      if ( (g<=k_band) || (j<=(r+n_dofs-1)) )
+      if (k <3) { ii = n1[i]*3 + k - 2 ; }
+      else      { ii = n2[i]*3 + k - 5 ; }
+  
+      for (j=0; j<6; j++)
       {
-        K[i][j] = K[i][j] - (K[i][h]*K[i][g]) ;
-        j = j + 1;
-        g = g + 1;
+        if (j <3) { jj = n1[i]*3 + j - 2 ; }
+        else      { jj = n2[i]*3 + j - 5 ; }
+  
+        md_K_add(ii, jj, keg[k][j]) ;
       }
-      i = i + 1;
-      h = h - 1;
     }
   }
-
-  /* forward routine: */
-  for (k=1; k<=(n_dofs-1); k++)
-  {
-    i = k + 1 ;
-    j = r - 1 ;
-
-    if ( (j >= 1) || (i <= n_dofs))
-    {
-      F[i] = F[i] - K[i][j]*F[k] ;
-      i = i + 1 ;
-      j = j - 1 ;
-    }
-  }
-
-  /* backward routine: */
-  for (k=n_dofs; k>=1; k--)
-  {
-    i = k + 1 ;
-    j = r + 1 ;
-    if ((j<=k_band) || (i<=n_dofs))
-    {
-      F[k] = F[k] - K[k][j]*F[i] ;
-      i = i + 1 ;
-      j = j + 1 ;
-    }
-    F[k] = F[k] * K[k][r] ;
-  }
-
-  return(0);
 }
+
+/*TODO: forces and boundary conditions! */
 
 /** Frees all allocated data */
 void free_data()
@@ -683,24 +821,11 @@ void free_data()
   }
 }
 
-/** free K,F */
-void free_sol_data()
-{
-  int j ;
-  for (j=1; j<=n_dofs; j++)
-  {
-    free(K[j]) ; K[j] = NULL ;
-  }
-  free(K); K = NULL ;
-  free(F); F = NULL ;
-}
-
 int main(argc, argv)
 int argc ;
 char *argv[];
 {
   FILE *fw = NULL ;
-  int   n_band = 0 ;
 
   if (argc < 2)
   {
@@ -723,10 +848,7 @@ char *argv[];
     }
   }
 
-  n_band = band() ;
-  printf("Matrix band size is %d, total size is %d.\n", n_band,n_nodes*3);
-
-  if (alloc_kf(n_dofs, n_band) != 0 )
+  if (alloc_kf() != 0 )
   {
     free_data();
     return(-1);
@@ -734,6 +856,7 @@ char *argv[];
 
   stiff(); 
 
+  solve_eqs();
 
   free_data();
   free_sol_data();
