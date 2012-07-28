@@ -88,6 +88,7 @@ Compatibility (tested)
 
 GNU/Linux (Ubuntu/x86)
 GNU/Linux (Debian/armhf)
+GNU/Linux (OpenWRT/mipsel)
 2.11BSD (PDP-11)
 IRIX 6.5 (SGI MIPS)
 Mac OS 10.3 (PowerPC)
