@@ -60,6 +60,7 @@ double  T[6][6] ;
 double  fe[6];
 double  feg[6];
 double  ueg[6];
+double  ue[6];
 
 int    K_len    = 0 ;
 int   *K_sizes  = NULL ; /* lenghts of K's rows */
@@ -109,7 +110,7 @@ FILE *fw ;
   for (i=0; i<n_nodes; i++)
   {
     fscanf(fw,"%e %e", &x_i[i], &y_i[i]) ;
-    printf(" %e %e\n", x_i[i], y_i[i]) ;
+    fprintf(stderr," %e %e\n", x_i[i], y_i[i]) ;
   }
   fprintf(stderr,"  Have %d coordinates.\n",n_nodes);
 
@@ -167,7 +168,7 @@ FILE *fw ;
   for (i=0; i<n_elems; i++)
   {
     fscanf(fw,"%d %d %d %e %e %e",&type[i], &n1[i], &n2[i], &E[i], &A[i], &I[i]) ;
-    printf("%d %d %d %e %e %e\n",type[i], n1[i], n2[i], E[i], A[i], I[i]) ;
+    fprintf(stderr,"%d %d %d %e %e %e\n",type[i], n1[i], n2[i], E[i], A[i], I[i]) ;
   }
   fprintf(stderr,"  Have %d elements.\n",n_elems);
 
@@ -208,7 +209,7 @@ FILE *fw ;
   for (i=0; i<n_disps; i++)
   {
     fscanf(fw,"%d %d %e",&d_n[i], &d_d[i], &d_v[i]) ;
-    printf("%d %d %e\n",d_n[i], d_d[i], d_v[i]) ;
+    fprintf(stderr,"%d %d %e\n",d_n[i], d_d[i], d_v[i]) ;
   }
   fprintf(stderr,"  Have %d supports.\n",n_nfors);
 
@@ -254,7 +255,7 @@ FILE *fw ;
   for (i=0; i<n_nfors; i++)
   {
     fscanf(fw,"%d %d %e",&f_n[i], &f_d[i], &f_v[i]) ;
-    printf("%d %d %e\n",f_n[i], f_d[i], f_v[i]) ;
+    fprintf(stderr,"%d %d %e\n",f_n[i], f_d[i], f_v[i]) ;
   }
   fprintf(stderr,"  Have %d forces in nodes.\n",n_nfors);
 
@@ -314,7 +315,7 @@ FILE *fw ;
   for (i=0; i<n_eload; i++)
   {
     fscanf(fw,"%d %d %e %e",&l_e[i], &l_d[i], &l_v1[i], &l_v2[i]) ;
-    printf("%d %d %e %e\n",l_e[i], l_d[i], l_v1[i], l_v2[i]) ;
+    fprintf(stderr,"%d %d %e %e\n",l_e[i], l_d[i], l_v1[i], l_v2[i]) ;
   }
   fprintf(stderr,"  Have %d element loads.\n",n_eload);
 
@@ -645,6 +646,7 @@ double l ;
   }
 }
 
+
 /* set transformation matrix to zero */
 void tran_zero()
 {
@@ -656,8 +658,8 @@ void tran_zero()
 
 /** Transformation matrix */
 void tran(s, c)
-float s ;
-float c ;
+double s ;
+double c ;
 {
   tran_zero();
   T[0][0] = c ;
@@ -679,8 +681,8 @@ void ke_switch()
 }
 
 void ke_to_keg(s, c)
-float s ;
-float c ;
+double s ;
+double c ;
 {
   int i,j,k;
   float fval, kval ;
@@ -759,8 +761,6 @@ double va;
 double vb;
 double L;
 {
-	int i ;
-
 	switch (type[epos])
   {
     case 0: /* |--| */
@@ -952,36 +952,117 @@ void free_data()
   }
 }
 
-void print_data()
+void u_to_ue(s,c)
+double s ;
+double c ;
 {
-	int i ;
+	int i,j ;
+	double fval ;
 
-	fprintf(stderr," Load and displacement vectors:\n");
-	for (i=0; i<(3*n_nodes); i++)
-	  fprintf(stderr,"%3d %e %e\n", i+1, F_val[i], u_val[i]);
+  tran(s, c);
+	for (i=0; i<6; i++) { ue[i] = 0.0 ; }
+  
+	for (i=0; i<6; i++)
+  {
+    fval = 0.0 ;
+
+    for (j=0; j<6; j++)
+    {
+      fval += T[i][j] * ueg[j] ;
+    }
+    ue[i] = fval ;
+  }
 }
 
-void print_k()
-{
-	int i, j, k ;
-	float val ;
 
-	for (i=1; i<=(n_nodes*3); i++)
+
+/** Local results */
+void res_loc(epos)
+int epos ;
+{
+  int i, j, m ;
+  float x1,y1, x2,y2, l, s, c, fval ;
+
+	for (i=0; i<6; i++) 
+	{ 
+		fe[i]  = 0.0 ; 
+		feg[i] = 0.0 ; 
+		ue[i]  = 0.0 ; 
+	}
+    
+	/* get initial stuff */
+	for (i=0; i<3; i++)
 	{
-		for (j=1; j<=(n_nodes*3); j++)
+		ueg[i]   = u_val[(3*(n1[epos]-1))+i];
+		ueg[i+3] = u_val[(3*(n2[epos]-1))+i];
+	}
+
+	x1 = x_i[n1[epos]-1] ;
+  y1 = y_i[n1[epos]-1] ;
+  x2 = x_i[n2[epos]-1] ;
+  y2 = y_i[n2[epos]-1] ;
+    
+  l = sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)) ;
+  if (l <= 0.0) {return;} /* oops, zero length element */
+  s = (y2-y1)/l ;
+  c = (x2-x1)/l ;
+
+  u_to_ue(s,c);
+  stiff_loc(type[epos], E[epos], A[epos], I[epos], (double)l) ;
+
+	/* compute forces in nodes: */
+	for (i=0; i<6; i++)
+  {
+    fval = 0.0 ;
+
+    for (j=0; j<6; j++)
+    {
+      fval += ke[i][j] * ue[j] ;
+    }
+    fe[i] -= fval ;
+  }
+
+	/* primary forces: */
+	for (m=0; m<n_elems; m++)
+	{
+		if ((l_e[m]-1) == epos)
 		{
-			val = 0.0 ;
-			for (k=K_from[i-1]; k<(K_from[i-1]+K_sizes[i-1]); k++)
-  		{
-    		if (K_cols[k] == (j-1))
-    		{
-     			val = K_val[k] ; 
-     			break ;
-    		}
-  		}
-			fprintf(stderr, " %e",val);
+			switch (l_d[m])
+			{
+				case 1: 
+					one_eload(epos, (double)l_v1[m], (double)l_v2[m], 0.0, 0.0, (double)l);
+					break;
+				case 2: 
+					one_eload(epos, 0.0, 0.0, (double)l_v1[m], (double)l_v2[m], (double)l);
+					break;
+			}
 		}
-		fprintf(stderr,"\n");
+	}
+
+	/* get reactions: */
+	for (i=0; i<6; i++)
+  {
+    fval = 0.0 ;
+
+    for (j=0; j<6; j++)
+    {
+      fval += T[j][i] * fe[j] ;
+    }
+    feg[i] += fval ;
+  }
+
+	for (i=0; i<n_disps; i++)
+	{
+		if (d_n[i] == n1[epos]) { d_v[i] +=  feg[d_d[i]-1] ; }
+		if (d_n[i] == n2[epos]) { d_v[i] +=  feg[d_d[i]+2] ; }
+
+		for (j=0; j<n_nfors; j++)
+		{
+			if ((d_n[i] == f_n[j]) && (d_d[i] == f_d[j]))
+			{
+				d_v[i] += f_v[j] ;
+			}
+		}
 	}
 }
 
@@ -989,6 +1070,112 @@ void print_k()
 void results(fw)
 FILE *fw;
 {
+	int i;
+
+	fprintf(fw,"\nFINAL REPORT\n");
+
+	fprintf(fw,"\nNodes:\n");
+	fprintf(fw," Num     X            Y:\n");
+	for (i=0; i<n_nodes; i++)
+	{
+		fprintf(fw," %3d %e %e\n",i+1, x_i[i], y_i[i]);
+	}
+
+	fprintf(fw,"\nElements:\n");
+	fprintf(fw," Num Node1 Node2     E             A           I:\n");
+	for (i=0; i<n_elems; i++)
+	{
+		fprintf(fw," %3d   %3d   %3d %e %e %e ",i+1,n1[i],n2[i],E[i],A[i],I[i]);
+		switch(type[i])
+		{
+			case 0: fprintf(fw,"|--|\n");break;
+			case 1: fprintf(fw,"o--|\n");break;
+			case 2: fprintf(fw,"|--o\n");break;
+			case 3: fprintf(fw,"o--o\n");break;
+			default: fprintf(fw,"unknown!\n");break;
+		}
+	}
+
+	fprintf(fw,"\nSupports in nodes:\n");
+	fprintf(fw," Num Node Dir Size:\n");
+	for (i=0; i<n_disps; i++)
+	{
+		fprintf(fw," %3d  %3d ",i+1, d_n[i]);
+		switch(d_d[i])
+		{
+			case 1: fprintf(fw,"-->");break;
+			case 2: fprintf(fw,"/|\\");break;
+			case 3: fprintf(fw,"__^");break;
+			default: fprintf(fw,"unknown!");break;
+		}
+		fprintf(fw," %e\n",d_v[i]);
+	}
+
+	fprintf(fw,"\nLoads in nodes:\n");
+	fprintf(fw," Num Node Dir Size:\n");
+	for (i=0; i<n_nfors; i++)
+	{
+		fprintf(fw," %3d  %3d ",i+1, f_n[i]);
+		switch(f_d[i])
+		{
+			case 1: fprintf(fw,"-->");break;
+			case 2: fprintf(fw,"/|\\");break;
+			case 3: fprintf(fw,"__^");break;
+			default: fprintf(fw,"unknown!");break;
+		}
+		fprintf(fw," %e\n",f_v[i]);
+	}
+
+	fprintf(fw,"\nElement loads:\n");
+	fprintf(fw," Num Node Dir Sizes (start..end):\n");
+	for (i=0; i<n_eload; i++)
+	{
+		fprintf(fw," %3d  %3d ",i+1, l_e[i]);
+		switch(l_d[i])
+		{
+			case 1: fprintf(fw,">>>");break;
+			case 2: fprintf(fw,"vvv");break;
+			default: fprintf(fw,"unknown!");break;
+		}
+		fprintf(fw," %e..%e\n",l_v1[i],l_v2[i]);
+	}
+
+	fprintf(fw,"\nDEFORMATIONS:\n");
+	fprintf(fw," Node  X            Y            Rotation:\n");
+	for (i=0; i<n_nodes; i++)
+	{
+		fprintf(fw," %4d %e %e %e\n", i+1, u_val[3*i], u_val[3*i+1], u_val[3*i+2]);
+	}
+
+	for (i=0; i<n_disps; i++)
+	{
+		d_v[i] = 0.0 ; /* going to reuse it for reactions! */
+	}
+
+	fprintf(fw,"\nELEMENT FORCES (in nodes):\n");
+	fprintf(fw," Element  FX1      FY1       M1        FX2        FY2       M2:\n");
+	for (i=0; i<n_elems; i++)
+	{
+		res_loc(i);
+		fprintf(fw," %3d %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e\n",
+			 	i+1, fe[0], fe[1], fe[2], fe[3], fe[4], fe[5] );
+	}
+
+	fprintf(fw,"\nREACTIONS:\n");
+
+	fprintf(fw," Num Node Dir Size:\n");
+	for (i=0; i<n_disps; i++)
+	{
+		fprintf(fw," %3d  %3d ",i+1, d_n[i]);
+		switch(d_d[i])
+		{
+			case 1: fprintf(fw,"-->");break;
+			case 2: fprintf(fw,"/|\\");break;
+			case 3: fprintf(fw,"__^");break;
+			default: fprintf(fw,"unknown!");break;
+		}
+		fprintf(fw," %e\n",(-1.0)*d_v[i]);
+	}
 }
 
 int main(argc, argv)
@@ -996,6 +1183,10 @@ int argc ;
 char *argv[];
 {
   FILE *fw = NULL ;
+  FILE *fo = NULL ;
+
+	fprintf(stderr,"\nDDFOR 1.0: direct stiffness method solver for statics of 2D frames.\n");
+	fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
 
   if (argc < 2)
   {
@@ -1018,6 +1209,21 @@ char *argv[];
     }
   }
 
+  if (argc < 3)
+  {
+    /* standard input */
+    fo = stdout;
+  }
+  else
+  {
+    /* read from file */
+    if ((fo=fopen(argv[2],"w")) == NULL)
+    {
+      fprintf(stderr,"Failed to open output file!\n");
+			fo = stdout ;
+    }
+  }
+
   if (alloc_kf() != 0 )
   {
     free_data();
@@ -1029,12 +1235,12 @@ char *argv[];
 
 	fprintf(stderr,"\nSolution: \n");
   solve_eqs();
-	fprintf(stderr,"End of solution: \n");
+	fprintf(stderr,"End of solution. \n");
+
+  results(fo);
+	close(fo);
 
   free_sol_data();
-
-  results(stdout);
-
   free_data();
   return(0);
 }

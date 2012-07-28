@@ -1,6 +1,83 @@
-Simple direct stiffness method solver (for statics of frames).
+DDFOR: Simple direct stiffness method solver (for statics of frames).
 
 This program is written in K&R syntax of the C programming language.
 It is meant for retrocomputing (computers from 80').
 
 Licensed under the GNU GPL version 2.
+
+
+MANUAL
+======
+
+Introduction
+------------
+
+The code can solve beams and frames in x-y plane. Only static loads (forces in
+nodes, moments in nodes, continuous loads on beams are allowed).
+
+The code uses the Direct Stiffness Method
+(http://en.wikipedia.org/wiki/Direct_stiffness_method)
+
+
+Usage
+-----
+
+ddfor [inputfile [outputfile]]
+
+If no inputfile is given then program pseudo-interactively asks for data (note:
+there is no command line editing and no undo).
+
+
+Conventions
+-----------
+
+X-Y axes orientation:
+
+^ Y
+|
+o---> X
+
+Positive forces and displacments orientation:
+
+^ +FY, +uy
+|
+o---> +FX,+ux
+
+Positive load on beams:
+
+vvvvvvvvvvvvvvvvvv +n (normal to beam ... type 1)
+
+-> -> -> -> -> ->  +v (perpendicular to  beam ... type 2)
+
+
+Element types:
+--------------
+
+0 .. |---| .. no hinges 
+1 .. o---| .. hinge at start
+2 .. |---o .. hinge at end
+3 .. o---o .. two hinges 
+
+
+Boundary conditions types
+-------------------------
+
+1 .. displacement in X direction (ux)
+2 .. displacement in Y direction (uy)
+3 .. rotation 
+
+
+Loads (in nodes) types
+----------------------
+
+1 .. force in X direction (Fx)
+2 .. force in Y direction (Fy)
+3 .. moment 
+
+
+Element loads types
+-------------------
+
+1 .. continuous load in X direction (n)
+2 .. continuous load in Y direction (v)
+
