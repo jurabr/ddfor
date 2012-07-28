@@ -2,6 +2,22 @@
  * File name: ddfor.c
  * Date:      2012/07/17 20:10
  * Author:    Jiri Brozovsky
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License as
+   published by the Free Software Foundation; either version 2 of the
+   License.
+
+   This program is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   in a file called COPYING along with this program; if not, write to
+   the Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA
+   02139, USA.
+
  */
 
 #include <stdio.h>
@@ -38,26 +54,26 @@ float *l_v1 = NULL ; /* size at beginning */
 float *l_v2 = NULL ; /* size at end */
 
 /* solution variables: */
-float  ke[6][6] ;
-float  keg[6][6] ;
-float  T[6][6] ;
-float  fe[6];
-float  feg[6];
-float  ueg[6];
+double  ke[6][6] ;
+double  keg[6][6] ;
+double  T[6][6] ;
+double  fe[6];
+double  feg[6];
+double  ueg[6];
 
 int    K_len    = 0 ;
 int   *K_sizes  = NULL ; /* lenghts of K's rows */
 int   *K_from   = NULL ;
 int   *K_cols   = NULL ;
-float *K_val    = NULL ;
-float *F_val    = NULL ;
-float *u_val    = NULL ;
+double *K_val    = NULL ;
+double *F_val    = NULL ;
+double *u_val    = NULL ;
 
-float *M    = NULL ;
-float *r    = NULL ;
-float *z    = NULL ;
-float *p    = NULL ;
-float *q    = NULL ;
+double *M    = NULL ;
+double *r    = NULL ;
+double *z    = NULL ;
+double *p    = NULL ;
+double *q    = NULL ;
 
 /** Reading of data from file */
 int read_data(fw)
@@ -328,14 +344,14 @@ int alloc_kf()
 
   if ((K_sizes = (int *)malloc(3*n_nodes*sizeof(int)))   == NULL) { goto memFree ; }
   if ((K_from  = (int *)malloc(3*n_nodes*sizeof(int)))   == NULL) { goto memFree ; } 
-  if ((F_val   = (float *)malloc(3*n_nodes*sizeof(float))) == NULL) { goto memFree ; } 
-  if ((u_val   = (float *)malloc(3*n_nodes*sizeof(float))) == NULL) { goto memFree ; } 
+  if ((F_val   = (double *)malloc(3*n_nodes*sizeof(double))) == NULL) { goto memFree ; } 
+  if ((u_val   = (double *)malloc(3*n_nodes*sizeof(double))) == NULL) { goto memFree ; } 
 
-  if ((M   = (float *)malloc(3*n_nodes*sizeof(float))) == NULL) { goto memFree ; } 
-  if ((r   = (float *)malloc(3*n_nodes*sizeof(float))) == NULL) { goto memFree ; } 
-  if ((z   = (float *)malloc(3*n_nodes*sizeof(float))) == NULL) { goto memFree ; } 
-  if ((p   = (float *)malloc(3*n_nodes*sizeof(float))) == NULL) { goto memFree ; } 
-  if ((q   = (float *)malloc(3*n_nodes*sizeof(float))) == NULL) { goto memFree ; } 
+  if ((M   = (double *)malloc(3*n_nodes*sizeof(double))) == NULL) { goto memFree ; } 
+  if ((r   = (double *)malloc(3*n_nodes*sizeof(double))) == NULL) { goto memFree ; } 
+  if ((z   = (double *)malloc(3*n_nodes*sizeof(double))) == NULL) { goto memFree ; } 
+  if ((p   = (double *)malloc(3*n_nodes*sizeof(double))) == NULL) { goto memFree ; } 
+  if ((q   = (double *)malloc(3*n_nodes*sizeof(double))) == NULL) { goto memFree ; } 
 
   K_len = 0 ;
 
@@ -382,7 +398,7 @@ int alloc_kf()
 	K_len = sum ;
 
   if ((K_cols = (int *)malloc(K_len*sizeof(int))) == NULL) { goto memFree ; } 
-  if ((K_val = (float *)malloc(K_len*sizeof(float))) == NULL) { goto memFree ; } 
+  if ((K_val = (double *)malloc(K_len*sizeof(double))) == NULL) { goto memFree ; } 
 
   for (i=0; i<K_len; i++)
   {
@@ -486,7 +502,7 @@ int solve_eqs()
   /* main loop */
 	for (i=1; i<=n; i++) 
   { 
-    fprintf(stderr,"    CG iteration: %i/%i\n",i,n);
+    fprintf(stderr,"  CG iteration: %i/%i\n",i,n);
     for (j=0; j<n; j++) { z[j] = (r[j] / M[j]) ; }
 
     ro = 0.0 ;
@@ -501,7 +517,6 @@ int solve_eqs()
 		  beta = ro / roro ;
 	    for (j=0; j<n; j++) { p[j] = (z[j] + (beta*p[j])) ; }
 	  }
-
 
     for (k=0; k<n; k++) /* q = K*p */
     {
@@ -525,13 +540,11 @@ int solve_eqs()
 		  r[j] = r[j] - (alpha * q[j])  ; 
 	  } 
 
-
 		/* Convergence testing */
-
 	  normRes = md_vec_norm(r, n);
 	  normX   = md_vec_norm(u_val, n);
 
-    if (normRes  <= ((1e-6)*((normA*normX) + normB)) ) 
+    if (normRes  <= ((1e-3)*((normA*normX) + normB)) ) 
 		{
 			converged = 1;
 			break;
@@ -555,7 +568,7 @@ int type ;
 float E ;
 float A ;
 float I ;
-float l ;
+double l ;
 {
   int i, j ;
   float tuh ;
@@ -570,7 +583,7 @@ float l ;
   }
 
   /* common for all: */
-  tuh = (E*A)/l ;
+  tuh = (double) ((E*A)/l) ;
   ke[0][0] = tuh ;
   ke[3][3] = tuh ;
   ke[0][3] =( -tuh) ;
@@ -646,6 +659,7 @@ void tran(s, c)
 float s ;
 float c ;
 {
+  tran_zero();
   T[0][0] = c ;
   T[0][1] = s ;
   T[1][0] = (-s) ;
@@ -664,22 +678,6 @@ void ke_switch()
   for (i=0; i<6; i++) { for (j=0; j<6; j++) { ke[i][j] = keg[i][j] ; } }
 }
 
-/** Transposed transformation matrix */
-void tran_t(s, c)
-float s ;
-float c ;
-{
-  T[0][0] = c ;
-  T[0][1] = (-s) ;
-  T[1][0] = s ;
-  T[1][1] = c ;
-
-  T[3][3] = c ;
-  T[3][4] = (-s) ;
-  T[4][3] = s ;
-  T[4][4] = c ;
-}
-
 void ke_to_keg(s, c)
 float s ;
 float c ;
@@ -687,7 +685,7 @@ float c ;
   int i,j,k;
   float fval, kval ;
 
-  tran_t(s, c);
+  tran(s, c);
 
   for (i=0; i<6; i++)
   {
@@ -700,23 +698,22 @@ float c ;
       kval = 0.0 ;
       for (k=0; k<6; k++)
       {
-        /* normally: val += T[i][k] * Ke_loc[k][j] ; */
         kval += T[k][i] * ke[k][j] ;
       }
       keg[i][j] = kval ;
     }
+    feg[i] = fval ;
   }
 
-  tran(s, c);
   ke_switch();
 
-  for (i=1; i<=6; i++)
+  for (i=0; i<6; i++)
   {
     fval = 0.0 ;
-    for (j=1; j<=6; j++)
+    for (j=0; j<6; j++)
     {
       kval = 0.0 ;
-      for (k=1; k<=6; k++)
+      for (k=0; k<6; k++)
       {
         kval += ke[i][k] * T[k][j] ;
       }
@@ -729,7 +726,7 @@ float c ;
 void md_K_add(row, col, val)
 int row;
 int col;
-double val;
+float val;
 {
   int i ;
 
@@ -753,16 +750,61 @@ double val;
   return; /* we should NOT reach this point */
 }
 
+/* loads on nodes */
+void one_eload(epos, na, nb, va, vb, L)
+int epos;
+double na;
+double nb;
+double va;
+double vb;
+double L;
+{
+	int i ;
+
+	switch (type[epos])
+  {
+    case 0: /* |--| */
+            fe[0]+=(-(2.0*na+1.0*nb)*L)/6.0 ;
+            fe[1]+=(-(7.0*va+3.0*vb)*L)/20.0 ;
+            fe[2]+=((3.0*va+2.0*vb)*L*L)/60.0 ;
+            fe[3]+=(-(1.0*na+2.0*nb)*L)/6.0 ;
+            fe[4]+=(-(3.0*va+7.0*vb)*L)/20.0 ;
+            fe[5]+=(-(2.0*va+3.0*vb)*L*L)/60.0 ;
+            break ;
+    case 1: /* o--| */
+            fe[0]+=(-(2.0*na+1.0*nb)*L)/6.0 ;
+            fe[1]+=(-(4.0*va+11.0*vb)*L)/40.0 ;
+            fe[3]+=(-(1.0*na+2.0*nb)*L)/6.0 ;
+            fe[4]+=(-(16.0*va+9.0*vb)*L)/40.0 ;
+            fe[5]+=((8.0*va+7.0*vb)*L*L)/120.0 ;
+            break ;
+    case 2: /* |--o */
+            fe[0]+=(-(2.0*na+1.0*nb)*L)/6.0 ;
+            fe[1]+=(-(16.0*va+9.0*vb)*L)/40.0 ;
+            fe[3]+=(-(1.0*na+2.0*nb)*L)/6.0 ;
+            fe[2]+=((8.0*va+7.0*vb)*L*L)/120.0 ;
+            fe[4]+=(-(4.0*va+11.0*vb)*L)/40.0 ;
+            break ;
+    case 3: /* o--o */
+            fe[0]+=(-(2.0*na+1.0*nb)*L)/6.0 ;
+            fe[1]+=(-(7.0*va+3.0*vb)*L)/20.0 ;
+            fe[3]+=(-(1.0*na+2.0*nb)*L)/6.0 ;
+            fe[4]+=(-(3.0*va+7.0*vb)*L)/20.0 ;
+            break ;
+    default: return; break;
+  }
+}
+
 /* computes stiffness matrix of the structure */
 void stiff()
 {
-  int i, j, k, ii, jj ;
-  int type ;
+  int i, j, k, ii, jj, m ;
   float x1,y1, x2,y2, l, s, c ;
 
 
   for (i=0; i<n_elems; i++)
   {
+	  for (m=0; m<6; m++) {fe[m] = 0.0 ; feg[m]=0.0;}
     x1 = x_i[n1[i]-1] ;
     y1 = y_i[n1[i]-1] ;
     x2 = x_i[n2[i]-1] ;
@@ -774,14 +816,35 @@ void stiff()
     c = (x2-x1)/l ;
     
     tran_zero();
-    stiff_loc(type, E[i], A[i], I[i], l) ;
+    stiff_loc(type[i], E[i], A[i], I[i], (double)l) ;
+
+		/* loads on elements: */
+		for (m=0; m<n_elems; m++)
+		{
+			if ((l_e[m]-1) == i)
+			{
+				switch (l_d[m])
+				{
+					case 1: 
+						one_eload(i, (double)l_v1[m], (double)l_v2[m], 0.0, 0.0, (double)l);
+						break;
+					case 2: 
+						one_eload(i, 0.0, 0.0, (double)l_v1[m], (double)l_v2[m], (double)l);
+						break;
+				}
+			}
+		}
+
+		/* ke, fe transformation: */
     ke_to_keg(s, c) ;
 
-    /* TODO: localisation */
+    /* localisation */
     for (k=0; k<6; k++)
     {
       if (k <3) { ii = n1[i]*3 + k - 2 ; }
       else      { ii = n2[i]*3 + k - 5 ; }
+
+      F_val[ii-1] += feg[k] ;
   
       for (j=0; j<6; j++)
       {
@@ -794,7 +857,75 @@ void stiff()
   }
 }
 
-/*TODO: forces and boundary conditions! */
+/* supports */
+void add_one_disp(node, dir, val)
+int   node;
+int   dir;
+float val;
+{
+  int i,j,n ;
+  int row ;
+
+  row = (node-1)*3 + dir - 1 ;  /* note: -1 ? */
+  n = 3*n_nodes ;
+
+  for (i=0; i<n; i++)
+  {
+    for (j=K_from[i]; j<(K_from[i]+K_sizes[i]); j++)
+    {
+      if (K_cols[i] == (row))
+      {
+        if (K_cols[i] < 0) {break;}
+        F_val[K_cols[i]] += K_val[i]*val ;
+        K_val[i] = 0.0 ;
+        break ;
+      }
+    }
+  }
+
+  for (i=K_from[row]; i<K_from[row]+K_sizes[row]; i++)
+  {
+    if (K_cols[i] < 0) {break;}
+    if (K_cols[i] == row) 
+    {
+      K_val[i] = 1.0 ;
+    }
+    else
+    {
+      K_val[i] = 0.0 ;
+    }
+  }
+  u_val[row] = val ;
+  F_val[row] = val ; /* it will destroy any force in this place */
+}
+
+/* forces */
+void add_one_force(node, dir, val)
+int   node;
+int   dir;
+float val;
+{
+  int row ;
+
+  row = (node-1)*3 + dir - 1 ;  /* note: -1 ? */
+
+  F_val[row] += val ; 
+}
+
+void disps_and_loads()
+{
+  int i ;
+
+  for (i=0; i<n_nfors; i++)
+  {
+		add_one_force(f_n[i], f_d[i], f_v[i]);
+  }
+
+  for (i=0; i<n_disps; i++)
+  {
+		add_one_disp(d_n[i], d_d[i], d_v[i]);
+  }
+}
 
 /** Frees all allocated data */
 void free_data()
@@ -819,6 +950,45 @@ void free_data()
   {
     free(l_e);free(l_d);free(l_v1);free(l_v2);
   }
+}
+
+void print_data()
+{
+	int i ;
+
+	fprintf(stderr," Load and displacement vectors:\n");
+	for (i=0; i<(3*n_nodes); i++)
+	  fprintf(stderr,"%3d %e %e\n", i+1, F_val[i], u_val[i]);
+}
+
+void print_k()
+{
+	int i, j, k ;
+	float val ;
+
+	for (i=1; i<=(n_nodes*3); i++)
+	{
+		for (j=1; j<=(n_nodes*3); j++)
+		{
+			val = 0.0 ;
+			for (k=K_from[i-1]; k<(K_from[i-1]+K_sizes[i-1]); k++)
+  		{
+    		if (K_cols[k] == (j-1))
+    		{
+     			val = K_val[k] ; 
+     			break ;
+    		}
+  		}
+			fprintf(stderr, " %e",val);
+		}
+		fprintf(stderr,"\n");
+	}
+}
+
+/** computes and prints results */
+void results(fw)
+FILE *fw;
+{
 }
 
 int main(argc, argv)
@@ -855,12 +1025,17 @@ char *argv[];
   }
 
   stiff(); 
+	disps_and_loads();
 
+	fprintf(stderr,"\nSolution: \n");
   solve_eqs();
+	fprintf(stderr,"End of solution: \n");
 
-  free_data();
   free_sol_data();
 
+  results(stdout);
+
+  free_data();
   return(0);
 }
 
