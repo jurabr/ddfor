@@ -21,7 +21,7 @@
  */
 
 #include <stdio.h>
-/*#include <stdlib.h>*/
+#include <stdlib.h>
 #include <math.h>
 
 int    n_nodes = 0 ;
@@ -414,7 +414,7 @@ memFree:
   return(-1);
 }
 
-double md_norm_K()
+double norm_K()
 {
   int i,j ;
   double MaxNorm = 0.0 ;
@@ -434,9 +434,9 @@ double md_norm_K()
   return(Norm);
 }
 
-double md_vec_norm(a, len)
+double vec_norm(a, len)
 double *a;
-long len;
+int len;
 {
   int i ;
   double Norm    = 0.0 ;
@@ -457,8 +457,8 @@ int solve_eqs()
 
   n = 3*n_nodes ;
 
-	normA = md_norm_K();
-	normB = md_vec_norm(F_val, n);
+	normA = norm_K();
+	normB = vec_norm(F_val, n);
 
   if (normB <= 0.0) /* no loads - nothing to do */
 	{
@@ -481,7 +481,7 @@ int solve_eqs()
 
 		if (fabs(M[i]) < 1e-5) 
 		{ 
-	    fprintf(stderr,"zero value at [%i,%i]: %e\n",i+1,i+1, M[i]);
+	    fprintf(stderr,"zero value at [%d,%d]: %e\n",i+1,i+1, M[i]);
 			return( -1 ); 
 		}
 	}
@@ -503,7 +503,7 @@ int solve_eqs()
   /* main loop */
 	for (i=1; i<=n; i++) 
   { 
-    fprintf(stderr,"  CG iteration: %i/%i\n",i,n);
+    fprintf(stderr,"  CG iteration: %d/%d\n",i,n);
     for (j=0; j<n; j++) { z[j] = (r[j] / M[j]) ; }
 
     ro = 0.0 ;
@@ -542,8 +542,8 @@ int solve_eqs()
 	  } 
 
 		/* Convergence testing */
-	  normRes = md_vec_norm(r, n);
-	  normX   = md_vec_norm(u_val, n);
+	  normRes = vec_norm(r, n);
+	  normX   = vec_norm(u_val, n);
 
     if (normRes  <= ((1e-3)*((normA*normX) + normB)) ) 
 		{
@@ -1238,7 +1238,7 @@ char *argv[];
 	fprintf(stderr,"End of solution. \n");
 
   results(fo);
-	close(fo);
+	fclose(fo);
 
   free_sol_data();
   free_data();
