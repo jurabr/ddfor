@@ -974,6 +974,84 @@ double c ;
   }
 }
 
+/** Find all element load in give direction */
+void get_eloads(epos, dir, na, nb)
+int epos;
+int dir;
+double *na;
+double *nb;
+{
+  int i;
+  
+  *na = 0.0 ;
+  *nb = 0.0 ;
+
+  for (i=0; i<n_eload; i++)
+  {
+    if ( (l_e[i] == (epos+1)) && (dir == l_d[i]) )
+    {
+      *na += l_v1[i] ;
+      *nb += l_v2[i] ;
+    }
+  }
+}
+
+/** Compute internal force (N, V, M) for given point of beam */
+double in_force(type, epos, div, ppos)
+int type; /* force type: 1=N, 2=V, 3=M */
+int epos; /* element position */
+int div;  /* number of divisions */
+int ppos; /* number of computed point (0...div)*/
+{
+  double x1,x2,y1,y2 ;
+  double Na,Nb, Va,Vb, Ma,Mb, L, lenx, lenxx, na, nb, no, nt ;
+  double Xo = 0.0 ;
+
+  Na = fe[0];
+  Va = fe[1];
+  Ma = fe[2];
+  Nb = fe[3];
+  Vb = fe[4];
+  Mb = fe[5];
+
+	x1 = x_i[n1[epos]-1] ;
+  y1 = y_i[n1[epos]-1] ;
+  x2 = x_i[n2[epos]-1] ;
+  y2 = y_i[n2[epos]-1] ;
+ 
+
+  L = sqrt( (y2-y1)*(y2-y1) + (x2-x1)*(x2-x1) ) ;
+  lenx  = L*((double)((double)ppos/(double)(div))) ;
+  lenxx = L - lenx ;
+
+  switch (type)
+  {
+    case 1 :
+             get_eloads(epos, 1, &na, &nb);
+             no = na ; nt = nb - no ;
+             Xo = lenx*no + 0.5*lenx*((nt*lenx/L)) ;
+             return (Xo - (Na) ) ;
+             break ;
+    case 2 : 
+             get_eloads(epos, 2, &na, &nb);
+             no = na ; nt = nb - no ;
+
+             Xo = (no*L)/2 - (no*lenx) 
+							 + ((nt*L)/6 - ((nt*lenx*lenx)/(2*L)) ) ;
+             return (Xo  - ((Mb + Ma)/L)  ) ;
+             break ;
+    case 3 : 
+             get_eloads(epos, 2, &na, &nb);
+             no = na ; nt = nb - no ;
+
+             Xo =  (no*L*lenx)/2 - (no*lenx*lenx)/2 
+                  + ((nt*L*lenx)/6.0 - (nt*lenx*lenx*lenx)/(6*L) ) ;
+             return ((-1.0)*(Xo + ((Ma*lenxx-Mb*lenx)/L)  ) ) ;
+             break ;
+  }
+
+  return(0.0);
+}
 
 
 /** Local results */
@@ -1065,6 +1143,7 @@ int epos ;
 		}
 	}
 }
+
 
 /** computes and prints results */
 void results(fw)
