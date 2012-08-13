@@ -1045,7 +1045,7 @@ int ppos; /* number of computed point (0...div)*/
 
              Xo =  (no*L*lenx)/2 - (no*lenx*lenx)/2 
                   + ((nt*L*lenx)/6.0 - (nt*lenx*lenx*lenx)/(6*L) ) ;
-             return ((+1.0)*(Xo + ((-Ma*lenxx+Mb*lenx)/L)  ) ) ;
+             return ((1.0)*(Xo + ((-Ma*lenxx+Mb*lenx)/L)  ) ) ;
              break ;
   }
 
