@@ -22,10 +22,17 @@ The code uses the Direct Stiffness Method
 Usage
 -----
 
-ddfor [inputfile [outputfile]]
+ddfor [inputfile [outputfile] [elementforcesfile] [plotfile]]
 
 If no inputfile is given then program pseudo-interactively asks for data (note:
-there is no command line editing and no undo).
+there is no command line editing and no undo). The pseudo-interactive feature 
+may not work in no-POSIX environments (in DOS). 
+If no output file is defined then results will by written to the terminal.
+Detailed list of internal forces is only available if the "elementforcesfile"
+file name is provided. 
+The "plotfile" can be used to save data in Gnuplot-compatible form. The 2nd 
+and 3rd columns cover X and Y coordinates, the 4th and 5th are for  N, the 6th
+and 7th are for V and the 8th and 9th are for M internal forces.
 
 
 Conventions
@@ -37,7 +44,7 @@ X-Y axes orientation:
 |
 o---> X
 
-Positive forces and displacments orientation:
+Positive forces and displacements orientation:
 
 ^ +FY, +uy
 |
@@ -45,9 +52,9 @@ o---> +FX,+ux
 
 Positive load on beams:
 
-vvvvvvvvvvvvvvvvvv +n (normal to beam ... type 1)
+-> -> -> -> -> ->  +n (in direction of beam axis ... type 1)
 
--> -> -> -> -> ->  +v (perpendicular to  beam ... type 2)
+vvvvvvvvvvvvvvvvvv +v (normal to  beam ... type 2)
 
 
 Element types:
@@ -91,6 +98,7 @@ GNU/Linux (Debian/armhf)
 GNU/Linux (OpenWRT/mipsel)
 2.11BSD (PDP-11)
 IRIX 6.5 (SGI MIPS)
+IRIX 5.3 (SGI MIPS)
 Mac OS 10.3 (PowerPC)
 MS-DOS 3.x (HP 95LX)
 MS-DOS 5.x (HP 200LX)

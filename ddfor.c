@@ -110,7 +110,7 @@ FILE *fw ;
   for (i=0; i<n_nodes; i++)
   {
     fscanf(fw,"%e %e", &x_i[i], &y_i[i]) ;
-    fprintf(stderr," %e %e\n", x_i[i], y_i[i]) ;
+    fprintf(stderr," %d %e %e\n", i+1, x_i[i], y_i[i]) ;
   }
   fprintf(stderr,"  Have %d coordinates.\n",n_nodes);
 
@@ -211,7 +211,7 @@ FILE *fw ;
     fscanf(fw,"%d %d %e",&d_n[i], &d_d[i], &d_v[i]) ;
     fprintf(stderr,"%d %d %e\n",d_n[i], d_d[i], d_v[i]) ;
   }
-  fprintf(stderr,"  Have %d supports.\n",n_nfors);
+  fprintf(stderr,"  Have %d supports.\n",n_disps);
 
 
   /* forces in nodes */
@@ -371,7 +371,7 @@ int alloc_kf()
 
   for (i=0; i<n_nodes; i++)
   {
-    for (j=0; j<n_eload; j++)
+    for (j=0; j<n_elems; j++)
     {
       if ((n1[j]-1) == i) 
 			{
@@ -996,6 +996,7 @@ double *nb;
   }
 }
 
+
 /** Compute internal force (N, V, M) for given point of beam */
 double in_force(type, epos, div, ppos)
 int type; /* force type: 1=N, 2=V, 3=M */
@@ -1026,33 +1027,30 @@ int ppos; /* number of computed point (0...div)*/
 
   switch (type)
   {
-    case 1 :
-             get_eloads(epos, 1, &na, &nb);
+    case 0 : return(lenx); break;
+    case 1 : get_eloads(epos, 1, &na, &nb);
              no = na ; nt = nb - no ;
              Xo = lenx*no + 0.5*lenx*((nt*lenx/L)) ;
              return (Xo - (Na) ) ;
              break ;
-    case 2 : 
-             get_eloads(epos, 2, &na, &nb);
+    case 2 : get_eloads(epos, 2, &na, &nb);
              no = na ; nt = nb - no ;
 
              Xo = (no*L)/2 - (no*lenx) 
 							 + ((nt*L)/6 - ((nt*lenx*lenx)/(2*L)) ) ;
              return (Xo  - ((Mb + Ma)/L)  ) ;
              break ;
-    case 3 : 
-             get_eloads(epos, 2, &na, &nb);
+    case 3 : get_eloads(epos, 2, &na, &nb);
              no = na ; nt = nb - no ;
 
              Xo =  (no*L*lenx)/2 - (no*lenx*lenx)/2 
                   + ((nt*L*lenx)/6.0 - (nt*lenx*lenx*lenx)/(6*L) ) ;
-             return ((-1.0)*(Xo + ((Ma*lenxx-Mb*lenx)/L)  ) ) ;
+             return ((+1.0)*(Xo + ((-Ma*lenxx+Mb*lenx)/L)  ) ) ;
              break ;
   }
 
   return(0.0);
 }
-
 
 /** Local results */
 void res_loc(epos)
@@ -1231,7 +1229,7 @@ FILE *fw;
 		d_v[i] = 0.0 ; /* going to reuse it for reactions! */
 	}
 
-	fprintf(fw,"\nELEMENT FORCES (in nodes):\n");
+	fprintf(fw,"\nINTERNAL FORCES (beginning and end of elements):\n");
 	fprintf(fw," Element  FX1      FY1       M1        FX2        FY2       M2:\n");
 	for (i=0; i<n_elems; i++)
 	{
@@ -1257,14 +1255,181 @@ FILE *fw;
 	}
 }
 
+/** computes and prints internal forces in elements */
+void eint_results(fw)
+FILE *fw;
+{
+  int i,j ;
+  int div = 10 ;
+
+  fprintf(fw,"\n# DETAILED INTERNAL FORCES: #\n");
+	fprintf(fw,"# Element  x      FX        FY        M\n");
+	for (i=0; i<n_elems; i++)
+	{
+		res_loc(i);
+    for (j=0; j<=div; j++)
+    {
+		fprintf(fw," %3d %2.3e %2.3e %2.3e %2.3e\n",
+			 	i+1,
+        in_force(0, i, div, j),
+        in_force(1, i, div, j),
+        in_force(2, i, div, j),
+        in_force(3, i, div, j)
+        );
+    }
+	  
+    fprintf(fw,"\n");
+	}
+}
+
+/** Compute internal force (N, V, M) for given point of beam
+ *  This routine is meant for plotting tools */
+void in_gfx(type, epos, div, ppos, mult, vx, vy)
+int type; /* force type: 1=N, 2=V, 3=M */
+int epos; /* element position */
+int div;  /* number of divisions */
+int ppos; /* number of computed point (0...div)*/
+double mult;
+double *vx;
+double *vy;
+{
+  double x1,x2,y1,y2,c,s ;
+  double Na,Nb, Va,Vb, Ma,Mb, L, lenx, lenxx, na, nb, no, nt ;
+  double Xo = 0.0 ;
+  double val = 0.0 ;
+
+  Na = fe[0];
+  Va = fe[1];
+  Ma = fe[2];
+  Nb = fe[3];
+  Vb = fe[4];
+  Mb = fe[5];
+
+	x1 = x_i[n1[epos]-1] ;
+  y1 = y_i[n1[epos]-1] ;
+  x2 = x_i[n2[epos]-1] ;
+  y2 = y_i[n2[epos]-1] ;
+ 
+
+  L = sqrt( (y2-y1)*(y2-y1) + (x2-x1)*(x2-x1) ) ;
+  lenx  = L*((double)((double)ppos/(double)(div))) ;
+  lenxx = L - lenx ;
+
+  s = (y2-y1)/L ;
+  c = (x2-x1)/L ;
+
+  *vx = x1 + lenx*c ;
+  *vy = y1 + lenx*s ;
+  val = 0 ;
+
+  switch (type)
+  {
+    case 0 : /* already computed */ break;
+    case 1 : get_eloads(epos, 1, &na, &nb);
+             no = na ; nt = nb - no ;
+             Xo = lenx*no + 0.5*lenx*((nt*lenx/L)) ;
+             val = (Xo - (Na) ) ;
+             break ;
+    case 2 : get_eloads(epos, 2, &na, &nb);
+             no = na ; nt = nb - no ;
+
+             Xo = (no*L)/2 - (no*lenx) 
+							 + ((nt*L)/6 - ((nt*lenx*lenx)/(2*L)) ) ;
+             val = (Xo  - ((Mb + Ma)/L)  ) ;
+             break ;
+    case 3 : get_eloads(epos, 2, &na, &nb);
+             no = na ; nt = nb - no ;
+
+             Xo =  (no*L*lenx)/2 - (no*lenx*lenx)/2 
+                  + ((nt*L*lenx)/6.0 - (nt*lenx*lenx*lenx)/(6*L) ) ;
+             val = ((-1.0)*(Xo + ((-Ma*lenxx+Mb*lenx)/L)  ) ) ;
+             break ;
+  }
+
+  *vx = *vx - val*mult*s ;
+  *vy = *vy + val*mult*c ;
+}
+
+/** prints internal forces in elements gfx-friendly form */
+void gfx_results(fw)
+FILE *fw;
+{
+  int i,j ;
+  int div = 10 ;
+  double x,y, nx,ny, vx,vy, mx,my ;
+  double size = 0.0;
+  double mult = 0.0;
+  double dmult = 0.0;
+
+  /* compute multiplier(s) first */
+  for (i=0; i<n_nodes; i++)
+  {
+    if (fabs(x_i[i]) > size) {size = fabs(x_i[i]);}
+    if (fabs(y_i[i]) > size) {size = fabs(y_i[i]);}
+    for (j=(i*3); j<((i*3)+3); j++) /* unused just now */
+    {
+      if (fabs(u_val[j]) > dmult) {dmult = fabs(u_val[j]);}
+    }
+  }
+  if (dmult > 1e-8) { dmult = 0.3*size/dmult; }
+
+	for (i=0; i<n_disps; i++)
+  {
+    if (fabs(d_v[i]) > mult) {mult = fabs(d_v[i]);}
+  }
+  if (mult > 1e-6){mult = 0.3*size/mult ;}
+
+  fprintf(fw,"\n# DETAILED INTERNAL FORCES (plot data): #\n");
+	fprintf(fw,"# Element  x       y      Nx    Ny      Vx    Vy      Mx      My\n");
+	for (i=0; i<n_elems; i++)
+	{
+		res_loc(i);
+    for (j=0; j<=div; j++)
+    {
+      in_gfx(0, i, div, j, mult, &x,  &y);
+      in_gfx(1, i, div, j, mult, &nx, &ny);
+      in_gfx(2, i, div, j, mult, &vx, &vy);
+      in_gfx(3, i, div, j, mult, &mx, &my);
+
+      /* first line - for nicer plot... */
+      if (j == 0)
+      {
+        fprintf(fw,
+        " %3d %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e\n",
+			 	i+1, x,y, x,y,x,y,x,y 
+        );
+      }
+
+      /* actual data output */
+		  fprintf(fw,
+        " %3d %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e\n",
+			 	i+1, x,y, nx,ny,vx,vy,mx,my 
+      );
+      
+      /* last line - for nicer plot... */
+      if (j==div)
+      {
+        fprintf(fw,
+        " %3d %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e\n",
+			 	i+1, x,y, x,y,x,y,x,y 
+        );
+      }
+    }
+	  
+    fprintf(fw,"\n");
+	}
+}
+
 int main(argc, argv)
 int argc ;
 char *argv[];
 {
   FILE *fw = NULL ;
   FILE *fo = NULL ;
+  FILE *fd = NULL ;
+  FILE *fp = NULL ;
 
-	fprintf(stderr,"\nDDFOR 1.0: direct stiffness method solver for statics of 2D frames.\n");
+	fprintf(stderr,"\nDDFOR 1.0.1: direct stiffness method solver for statics of 2D frames.\n");
 	fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
 
   if (argc < 2)
@@ -1290,18 +1455,49 @@ char *argv[];
 
   if (argc < 3)
   {
-    /* standard input */
+    /* standard output */
     fo = stdout;
   }
   else
   {
-    /* read from file */
+    /* write to file */
     if ((fo=fopen(argv[2],"w")) == NULL)
     {
       fprintf(stderr,"Failed to open output file!\n");
 			fo = stdout ;
     }
   }
+
+  if (argc < 4)
+  {
+    /* no output */
+    fd = NULL;
+  }
+  else
+  {
+    /* write to file */
+    if ((fd=fopen(argv[3],"w")) == NULL)
+    {
+      fprintf(stderr,"Failed to open output file!\n");
+			fd = NULL ;
+    }
+  }
+
+  if (argc < 5)
+  {
+    /* no output */
+    fp = NULL;
+  }
+  else
+  {
+    /* write to file */
+    if ((fp=fopen(argv[4],"w")) == NULL)
+    {
+      fprintf(stderr,"Failed to open gfx file!\n");
+			fp = NULL ;
+    }
+  }
+
 
   if (alloc_kf() != 0 )
   {
@@ -1318,6 +1514,19 @@ char *argv[];
 
   results(fo);
 	fclose(fo);
+
+  if (fd != NULL) 
+  { 
+    eint_results(fd); 
+    fclose(fd);
+  }
+
+  if (fp != NULL) 
+  { 
+    gfx_results(fp); 
+    fclose(fp);
+  }
+
 
   free_sol_data();
   free_data();
