@@ -1422,6 +1422,33 @@ FILE *fw;
 	}
 }
 
+/** Find (approximation of) extreme values of N, V, M on beam */
+int beam_max(type, epos, div, nmax, npos, vmax, vpos, mmax, mpos)
+int type; /* force type: 1=N, 2=V, 3=M */
+int epos; /* element position */
+int div;  /* number of divisions */
+double *nmax; /* maximal N */
+double *npos; /* position of max N absolute from 1st node */
+double *vmax; /* maximal V */
+double *vpos; /* position of max V absolute from 1st node */
+double *mmax; /* maximal M */
+double *mpos; /* position of max M absolute from 1st node */
+{
+  int i ;
+
+  *nmax = 0.0 ;
+  *vmax = 0.0 ;
+  *mmax = 0.0 ;
+
+  for (i=0; i<=div; i++)
+  {
+    /* TODO */
+  }
+
+  /* TODO code here */
+  return(0);
+}
+
 int main(argc, argv)
 int argc ;
 char *argv[];
