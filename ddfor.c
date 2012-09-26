@@ -21,7 +21,9 @@
  */
 
 #include <stdio.h>
+#ifdef LARGE
 #include <stdlib.h>
+#endif
 #include <math.h>
 
 int    n_nodes = 0 ;
@@ -1434,9 +1436,14 @@ char *argv[];
 
   if (argc < 2)
   {
+#ifdef LARGE
     /* standard input */
     fprintf(stderr,"\nInteractive input:\n\n");
     read_data(stdin);
+#else
+    fprintf(stderr,"No input data file!\n");
+    return(-1);
+#endif
   }
   else
   {
