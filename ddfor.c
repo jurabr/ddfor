@@ -1423,6 +1423,7 @@ FILE *fw;
 }
 
 /** Find (approximation of) extreme values of N, V, M on beam */
+#ifdef LARGE
 int beam_max(type, epos, div, nmax, npos, vmax, vpos, mmax, mpos)
 int type; /* force type: 1=N, 2=V, 3=M */
 int epos; /* element position */
@@ -1434,20 +1435,31 @@ double *vpos; /* position of max V absolute from 1st node */
 double *mmax; /* maximal M */
 double *mpos; /* position of max M absolute from 1st node */
 {
-  int i ;
+  int j ;
+  double pos, val, val0;
 
   *nmax = 0.0 ;
   *vmax = 0.0 ;
   *mmax = 0.0 ;
 
-  for (i=0; i<=div; i++)
+  for (j=0; j<=div; j++)
   {
-    /* TODO */
+		res_loc(epos);
+    in_gfx(0, epos, div, j, 1.0, &pos,  &val0);
+
+    in_gfx(1, epos, div, j, 1.0, &val, &val0);
+    if (fabs(val) > fabs(*nmax)) {*nmax = val ; *npos = pos;}
+
+    in_gfx(2, epos, div, j, 1.0, &val, &val0);
+    if (fabs(val) > fabs(*vmax)) {*vmax = val ; *vpos = pos;}
+
+    in_gfx(3, epos, div, j, 1.0, &val, &val0);
+    if (fabs(val) > fabs(*mmax)) {*mmax = val ; *mpos = pos;}
   }
 
-  /* TODO code here */
   return(0);
 }
+#endif
 
 int main(argc, argv)
 int argc ;
