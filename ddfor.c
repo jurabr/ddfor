@@ -1461,6 +1461,79 @@ double *mpos; /* position of max M absolute from 1st node */
 }
 #endif
 
+/** Plot data (model geometry) to text console */
+void plot_geom(fw)
+FILE *fw;
+{
+  int size_x = 40 ; /* x console size (width)  */
+  int size_y = 8 ; /*  y console size (height) */
+  double  mult_x, mult_y ;
+  double max_x, min_x, max_y, min_y ;
+  char **fld = NULL;
+  int i, j;
+  int ii, jj;
+
+  /* allocate image buffer: */
+  if ((fld = (char **)malloc (size_y*sizeof(char *))) == NULL) return;
+  for (i=0; i<size_y; i++)
+  {
+    if ((fld[i] = (char *)malloc (size_x*sizeof(char))) == NULL) return;
+    for (j=0; j<size_x; j++) { fld[i][j] = ' '; }
+  }
+
+  /* find max, min: */
+  max_x = x_i[0] ;
+  min_x = x_i[0] ;
+  max_y = y_i[0] ;
+  min_y = y_i[0] ;
+
+  for (i=1; i<n_nodes; i++)
+  {
+    if (max_x < x_i[i]) {max_x = x_i[i];}
+    if (min_x > x_i[i]) {min_x = x_i[i];}
+
+    if (max_y < y_i[i]) {max_y = y_i[i];}
+    if (min_y > y_i[i]) {min_y = y_i[i];}
+  }
+
+  /* compute multipliers for translation to screen size: */
+  if (fabs(max_x-min_x) > 0)
+  {mult_x = (double)(size_x-2) /  (max_x - min_x) ;}
+  else { mult_x = 1 ; }
+
+  if (fabs(max_y-min_y) > 0)
+  { mult_y = (double)(size_y-2) /  (max_y - min_y) ; }
+  else { mult_y = 1 ; }
+
+  /* plot "+" for nodes */
+  for (i=0; i<n_nodes; i++)
+  {
+    ii =  (int)(x_i[i] * mult_x) + 1  ;
+    jj = size_y - ( (int)(y_i[i] * mult_y) + 2 ) ;
+  
+    fld[jj][ii] = '+' ;
+  }
+
+  /* TODO */
+
+  /* plot data: */  
+  for (i=0; i<size_y; i++)
+  {
+    for (j=0; j<size_x; j++)
+    {
+      fprintf(fw,"%c",fld[i][j]);
+    }
+    fprintf(fw,"\n");
+  }
+
+  /* free data: */
+  for (i=0; i<size_y; i++)
+  {
+    free(fld[i]) ; fld[i] = NULL ;
+  }
+  free(fld) ; fld = NULL ;
+}
+
 int main(argc, argv)
 int argc ;
 char *argv[];
@@ -1573,6 +1646,7 @@ char *argv[];
     fclose(fp);
   }
 
+  plot_geom(stderr);
 
   free_sol_data();
   free_data();
