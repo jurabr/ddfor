@@ -1646,7 +1646,7 @@ char *argv[];
     fclose(fp);
   }
 
-  plot_geom(stderr);
+  /* plot_geom(stderr); */
 
   free_sol_data();
   free_data();
