@@ -84,14 +84,13 @@ FILE *fw ;
 {
   int i;
 
-  fprintf(stderr,"Number of nodes:\n");
+  fprintf(stderr,"Input:\n");
   fscanf(fw,"%d", &n_nodes);
   if (n_nodes <= 0)
   {
     fprintf(stderr,"No nodes!\n");
     return(-1);
   }
-  fprintf(stderr,"  Declared %d nodes.\n", n_nodes);
 
   /* allocate data for nodes */
   if ((x_i=(float *)malloc(n_nodes*sizeof(float))) == NULL)
@@ -100,7 +99,6 @@ FILE *fw ;
     return(-2);
   }
 
-  fprintf(stderr,"Coordinates of nodes (x y):\n");
   if ((y_i=(float *)malloc(n_nodes*sizeof(float))) == NULL)
   {
     free(x_i);
@@ -112,13 +110,11 @@ FILE *fw ;
   for (i=0; i<n_nodes; i++)
   {
     fscanf(fw,"%e %e", &x_i[i], &y_i[i]) ;
-    fprintf(stderr," %d %e %e\n", i+1, x_i[i], y_i[i]) ;
   }
-  fprintf(stderr,"  Have %d coordinates.\n",n_nodes);
+  fprintf(stderr,"  Nodes:           %d\n",n_nodes);
 
 
   /* number of elements */
-  fprintf(stderr,"Number of elements:\n");
   fscanf(fw,"%d", &n_elems);
   if (n_elems <= 0)
   {
@@ -126,7 +122,6 @@ FILE *fw ;
     fprintf(stderr,"No elements!\n");
     return(-1);
   }
-  fprintf(stderr,"  Declared %d elements.\n", n_elems);
 
   if ((n1=(int *)malloc(n_elems*sizeof(int))) == NULL)
   {
@@ -165,17 +160,14 @@ FILE *fw ;
     return(-2);
   }
 
-  fprintf(stderr,"Element data (type node1 node2 E A I):\n");
   /* read element data */
   for (i=0; i<n_elems; i++)
   {
     fscanf(fw,"%d %d %d %e %e %e",&type[i], &n1[i], &n2[i], &E[i], &A[i], &I[i]) ;
-    fprintf(stderr,"%d %d %d %e %e %e\n",type[i], n1[i], n2[i], E[i], A[i], I[i]) ;
   }
-  fprintf(stderr,"  Have %d elements.\n",n_elems);
+  fprintf(stderr,"  Elements:        %d\n", n_elems);
 
   /* supports */
-  fprintf(stderr,"Number of supports:\n");
   fscanf(fw,"%d", &n_disps);
   if (n_disps <= 0)
   {
@@ -183,7 +175,6 @@ FILE *fw ;
     fprintf(stderr,"No supports!\n");
     return(-1);
   }
-  fprintf(stderr,"  Declared %d supports.\n", n_disps);
 
   if ((d_n=(int *)malloc(n_disps*sizeof(int))) == NULL)
   {
@@ -206,18 +197,15 @@ FILE *fw ;
     return(-2);
   }
   
-  fprintf(stderr,"Supports data (node direction size):\n");
   /* read supports data */
   for (i=0; i<n_disps; i++)
   {
     fscanf(fw,"%d %d %e",&d_n[i], &d_d[i], &d_v[i]) ;
-    fprintf(stderr,"%d %d %e\n",d_n[i], d_d[i], d_v[i]) ;
   }
-  fprintf(stderr,"  Have %d supports.\n",n_disps);
+  fprintf(stderr,"  Supports:        %d\n",n_disps);
 
 
   /* forces in nodes */
-  fprintf(stderr,"Number of forces in nodes:\n");
   fscanf(fw,"%d", &n_nfors);
   if (n_nfors <= 0)
   {
@@ -226,7 +214,6 @@ FILE *fw ;
     fprintf(stderr,"No forces in nodes!\n");
     return(-1);
   }
-  fprintf(stderr,"  Declared %d forces in nodes.\n", n_nfors);
 
   if ((f_n=(int *)malloc(n_nfors*sizeof(int))) == NULL)
   {
@@ -252,18 +239,15 @@ FILE *fw ;
     return(-2);
   }
   
-  fprintf(stderr,"Forces in nodes data (node direction size):\n");
   /* read supports data */
   for (i=0; i<n_nfors; i++)
   {
     fscanf(fw,"%d %d %e",&f_n[i], &f_d[i], &f_v[i]) ;
-    fprintf(stderr,"%d %d %e\n",f_n[i], f_d[i], f_v[i]) ;
   }
-  fprintf(stderr,"  Have %d forces in nodes.\n",n_nfors);
+  fprintf(stderr,"  Forces in nodes: %d\n",n_nfors);
 
 
   /* loads on elements */
-  fprintf(stderr,"Number of element loads:\n");
   fscanf(fw,"%d", &n_eload);
   if (n_eload <= 0)
   {
@@ -273,7 +257,6 @@ FILE *fw ;
     fprintf(stderr,"No element loads!\n");
     return(-1);
   }
-  fprintf(stderr,"  Declared %d element loads.\n", n_eload);
 
   if ((l_e=(int *)malloc(n_eload*sizeof(int))) == NULL)
   {
@@ -312,14 +295,14 @@ FILE *fw ;
     return(-2);
   }
   
-  fprintf(stderr,"Element loads (element direction startsize endsize):\n");
-  /* read supports data */
+  /* read element loads data */
   for (i=0; i<n_eload; i++)
   {
     fscanf(fw,"%d %d %e %e",&l_e[i], &l_d[i], &l_v1[i], &l_v2[i]) ;
-    fprintf(stderr,"%d %d %e %e\n",l_e[i], l_d[i], l_v1[i], l_v2[i]) ;
   }
-  fprintf(stderr,"  Have %d element loads.\n",n_eload);
+  fprintf(stderr,"  Element loads:   %d\n",n_eload);
+
+  fprintf(stderr,"End of input.\n");
 
   return(0);
 }
@@ -1543,7 +1526,7 @@ char *argv[];
   FILE *fd = NULL ;
   FILE *fp = NULL ;
 
-	fprintf(stderr,"\nDDFOR 1.0.1: direct stiffness method solver for statics of 2D frames.\n");
+	fprintf(stderr,"\nDDFOR 1.0.2: direct stiffness method solver for statics of 2D frames.\n");
 	fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
 
   if (argc < 2)
