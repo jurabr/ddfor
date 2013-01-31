@@ -38,6 +38,7 @@ float *y_i = NULL ;
 float *E = NULL ;
 float *A = NULL ;
 float *I = NULL ;
+float *rho = NULL ;
 int   *n1 = NULL ;
 int   *n2 = NULL ;
 int   *type = NULL ;
@@ -153,9 +154,16 @@ FILE *fw ;
     fprintf(stderr,"Can't allocate moments of inertia!\n");
     return(-2);
   }
-  if ((type=(int *)malloc(n_elems*sizeof(int))) == NULL)
+  if ((rho=(float *)malloc(n_elems*sizeof(float))) == NULL)
   {
     free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
+    fprintf(stderr,"Can't allocate moments of inertia!\n");
+    return(-2);
+  }
+
+  if ((type=(int *)malloc(n_elems*sizeof(int))) == NULL)
+  {
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
     fprintf(stderr,"Can't allocate types!\n");
     return(-2);
   }
@@ -163,7 +171,8 @@ FILE *fw ;
   /* read element data */
   for (i=0; i<n_elems; i++)
   {
-    fscanf(fw,"%d %d %d %e %e %e",&type[i], &n1[i], &n2[i], &E[i], &A[i], &I[i]) ;
+    fscanf(fw,"%d %d %d %e %e %e %e",
+      &type[i],&n1[i],&n2[i],&E[i],&A[i],&I[i],&rho[i]) ;
   }
   fprintf(stderr,"  Elements:        %d\n", n_elems);
 
@@ -171,27 +180,27 @@ FILE *fw ;
   fscanf(fw,"%d", &n_disps);
   if (n_disps <= 0)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
     fprintf(stderr,"No supports!\n");
     return(-1);
   }
 
   if ((d_n=(int *)malloc(n_disps*sizeof(int))) == NULL)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
     fprintf(stderr,"Can't allocate nodes for supports!\n");
     return(-2);
   }
   if ((d_d=(int *)malloc(n_disps*sizeof(int))) == NULL)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
     free(d_n);
     fprintf(stderr,"Can't allocate types of supports!\n");
     return(-2);
   }
   if ((d_v=(float *)malloc(n_disps*sizeof(float))) == NULL)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
     free(d_n);free(d_d);
     fprintf(stderr,"Can't allocate sizes of supports!\n");
     return(-2);
@@ -209,7 +218,7 @@ FILE *fw ;
   fscanf(fw,"%d", &n_nfors);
   if (n_nfors <= 0)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
     free(d_n);free(d_d);free(d_v);
     fprintf(stderr,"No forces in nodes!\n");
     return(-1);
@@ -217,14 +226,14 @@ FILE *fw ;
 
   if ((f_n=(int *)malloc(n_nfors*sizeof(int))) == NULL)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
     free(d_n);free(d_d);free(d_v);
     fprintf(stderr,"Can't allocate nodes for forces!\n");
     return(-2);
   }
   if ((f_d=(int *)malloc(n_nfors*sizeof(int))) == NULL)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
     free(d_n);free(d_d);free(d_v);
     free(f_n);
     fprintf(stderr,"Can't allocate types of forces!\n");
@@ -232,7 +241,7 @@ FILE *fw ;
   }
   if ((f_v=(float *)malloc(n_nfors*sizeof(float))) == NULL)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
     free(d_n);free(d_d);free(d_v);
     free(f_n);free(f_d);
     fprintf(stderr,"Can't allocate sizes of forces!\n");
@@ -251,7 +260,7 @@ FILE *fw ;
   fscanf(fw,"%d", &n_eload);
   if (n_eload <= 0)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
     free(d_n);free(d_d);free(d_v);
     free(f_n);free(f_d);free(f_v);
     fprintf(stderr,"No element loads!\n");
@@ -260,7 +269,7 @@ FILE *fw ;
 
   if ((l_e=(int *)malloc(n_eload*sizeof(int))) == NULL)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
     free(d_n);free(d_d);free(d_v);
     free(f_n);free(f_d);free(f_v);
     fprintf(stderr,"Can't allocate elements for loads!\n");
@@ -268,7 +277,7 @@ FILE *fw ;
   }
   if ((l_d=(int *)malloc(n_eload*sizeof(int))) == NULL)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
     free(d_n);free(d_d);free(d_v);
     if (n_nfors > 0){ free(f_n);free(f_d);free(f_v);}
     free(l_e);
@@ -277,7 +286,7 @@ FILE *fw ;
   }
   if ((l_v1=(float *)malloc(n_eload*sizeof(float))) == NULL)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
     free(d_n);free(d_d);free(d_v);
     if (n_nfors > 0){ free(f_n);free(f_d);free(f_v);}
     free(l_e);free(l_d);
@@ -286,7 +295,7 @@ FILE *fw ;
   }
   if ((l_v2=(float *)malloc(n_eload*sizeof(float))) == NULL)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
     free(d_n);free(d_d);free(d_v);
 
     if (n_nfors > 0){ free(f_n);free(f_d);free(f_v);}
@@ -359,17 +368,17 @@ int alloc_kf()
     for (j=0; j<n_elems; j++)
     {
       if ((n1[j]-1) == i) 
-			{
-				K_sizes[3*i+0]+=6; 
-				K_sizes[3*i+1]+=6; 
-				K_sizes[3*i+2]+=6; 
-			}
+      {
+        K_sizes[3*i+0]+=6; 
+        K_sizes[3*i+1]+=6; 
+        K_sizes[3*i+2]+=6; 
+      }
       if ((n2[j]-1) == i) 
-			{
-				K_sizes[3*i+0]+=6; 
-				K_sizes[3*i+1]+=6; 
-				K_sizes[3*i+2]+=6; 
-			}
+      {
+        K_sizes[3*i+0]+=6; 
+        K_sizes[3*i+1]+=6; 
+        K_sizes[3*i+2]+=6; 
+      }
     }
   }
 
@@ -381,7 +390,7 @@ int alloc_kf()
     sum += K_sizes[i] ;
   }
 
-	K_len = sum ;
+  K_len = sum ;
 
   if ((K_cols = (int *)malloc(K_len*sizeof(int))) == NULL) { goto memFree ; } 
   if ((K_val = (double *)malloc(K_len*sizeof(double))) == NULL) { goto memFree ; } 
@@ -406,16 +415,16 @@ double norm_K()
   double Norm    = 0.0 ;
   
   for (i=0; i<(3*n_nodes); i++)
-	{
-	 	Norm = 0.0;
-		for (j=K_from[i]; j<K_from[i]+K_sizes[i]; j++)
-		{
-			if (K_cols[j] < 0) {break;}
-	  	Norm += (K_val[j]*K_val[j]);
-		}
-		Norm = sqrt(Norm);
-		if (Norm > MaxNorm) {MaxNorm = Norm;}
-	}
+  {
+     Norm = 0.0;
+    for (j=K_from[i]; j<K_from[i]+K_sizes[i]; j++)
+    {
+      if (K_cols[j] < 0) {break;}
+      Norm += (K_val[j]*K_val[j]);
+    }
+    Norm = sqrt(Norm);
+    if (Norm > MaxNorm) {MaxNorm = Norm;}
+  }
   return(Norm);
 }
 
@@ -433,45 +442,45 @@ int len;
 int solve_eqs()
 {
   double ro, alpha, beta;
-	double roro = 0.0 ;
-	double normRes, normX, normA, normB;
+  double roro = 0.0 ;
+  double normRes, normX, normA, normB;
   double mval ;
-	int   converged = 0;
-	int   n = 0;
-	int   i,j,k;
+  int   converged = 0;
+  int   n = 0;
+  int   i,j,k;
 
   n = 3*n_nodes ;
 
-	normA = norm_K();
-	normB = vec_norm(F_val, n);
+  normA = norm_K();
+  normB = vec_norm(F_val, n);
 
   if (normB <= 0.0) /* no loads - nothing to do */
-	{
+  {
     fprintf(stderr,"No load found!\n");
-		return(0);
-	}
+    return(0);
+  }
 
   /* Jacobi preconditioner: */
-	for (i=0; i<n; i++) 
-	{ 
-		M[i] = 0.0 ;
-		for (j=K_from[i]; j<K_from[i]+K_sizes[i]; j++)
-		{
-			if (K_cols[j] == (i))
-			{
-				M[i] = K_val[j] ;
-				break ;
-			}
-		}
+  for (i=0; i<n; i++) 
+  { 
+    M[i] = 0.0 ;
+    for (j=K_from[i]; j<K_from[i]+K_sizes[i]; j++)
+    {
+      if (K_cols[j] == (i))
+      {
+        M[i] = K_val[j] ;
+        break ;
+      }
+    }
 
-		if (fabs(M[i]) < 1e-5) 
-		{ 
-	    fprintf(stderr,"zero value at [%d,%d]: %e\n",i+1,i+1, M[i]);
-			return( -1 ); 
-		}
-	}
+    if (fabs(M[i]) < 1e-5) 
+    { 
+      fprintf(stderr,"zero value at [%d,%d]: %e\n",i+1,i+1, M[i]);
+      return( -1 ); 
+    }
+  }
 
-	/* r = b - A*x  */
+  /* r = b - A*x  */
   for (i=0; i<n; i++)
   {
     mval = 0.0 ;
@@ -486,7 +495,7 @@ int solve_eqs()
   for (i=0; i<n; i++) { r[i] = F_val[i] - r[i] ; }
 
   /* main loop */
-	for (i=1; i<=n; i++) 
+  for (i=1; i<=n; i++) 
   { 
     fprintf(stderr,"  CG iteration: %d/%d\n",i,n);
     for (j=0; j<n; j++) { z[j] = (r[j] / M[j]) ; }
@@ -495,14 +504,14 @@ int solve_eqs()
     for (j=0; j<n; j++) {ro += r[j]*z[j];}
 
     if (i == 1)
-	  {
-	    for (j=0; j<n; j++) { p[j] = z[j]; }
-	  }
-	  else
-	  {
-		  beta = ro / roro ;
-	    for (j=0; j<n; j++) { p[j] = (z[j] + (beta*p[j])) ; }
-	  }
+    {
+      for (j=0; j<n; j++) { p[j] = z[j]; }
+    }
+    else
+    {
+      beta = ro / roro ;
+      for (j=0; j<n; j++) { p[j] = (z[j] + (beta*p[j])) ; }
+    }
 
     for (k=0; k<n; k++) /* q = K*p */
     {
@@ -518,34 +527,34 @@ int solve_eqs()
 
     mval = 0.0 ;
     for (j=0; j<n; j++) {mval += p[j]*q[j];}
-	  alpha = ro / mval ;
+    alpha = ro / mval ;
 
     for (j=0; j<n; j++) 
-	  { 
-		  u_val[j] = u_val[j] + (alpha * p[j])  ; 
-		  r[j] = r[j] - (alpha * q[j])  ; 
-	  } 
+    { 
+      u_val[j] = u_val[j] + (alpha * p[j])  ; 
+      r[j] = r[j] - (alpha * q[j])  ; 
+    } 
 
-		/* Convergence testing */
-	  normRes = vec_norm(r, n);
-	  normX   = vec_norm(u_val, n);
+    /* Convergence testing */
+    normRes = vec_norm(r, n);
+    normX   = vec_norm(u_val, n);
 
     if (normRes  <= ((1e-3)*((normA*normX) + normB)) ) 
-		{
-			converged = 1;
-			break;
-		}
+    {
+      converged = 1;
+      break;
+    }
 
-		roro = ro;
+    roro = ro;
   
   } /* end of main loop */
 
   if (converged == 1) { return(0); }
   else                
-	{
-		fprintf(stderr,"Unconverged solution!\n");
-		return(-1); 
-	}
+  {
+    fprintf(stderr,"Unconverged solution!\n");
+    return(-1); 
+  }
 }
 
 /** Local stiffness matrix */
@@ -733,7 +742,7 @@ float val;
       return ;
     }
   }
-	fprintf(stderr,"Addition of [%i,%i] to K failed (%e)\n",row,col,val);
+  fprintf(stderr,"Addition of [%i,%i] to K failed (%e)\n",row,col,val);
   return; /* we should NOT reach this point */
 }
 
@@ -746,7 +755,7 @@ double va;
 double vb;
 double L;
 {
-	switch (type[epos])
+  switch (type[epos])
   {
     case 0: /* |--| */
             fe[0]+=(-(2.0*na+1.0*nb)*L)/6.0 ;
@@ -789,7 +798,7 @@ void stiff()
 
   for (i=0; i<n_elems; i++)
   {
-	  for (m=0; m<6; m++) {fe[m] = 0.0 ; feg[m]=0.0;}
+    for (m=0; m<6; m++) {fe[m] = 0.0 ; feg[m]=0.0;}
     x1 = x_i[n1[i]-1] ;
     y1 = y_i[n1[i]-1] ;
     x2 = x_i[n2[i]-1] ;
@@ -803,24 +812,24 @@ void stiff()
     tran_zero();
     stiff_loc(type[i], E[i], A[i], I[i], (double)l) ;
 
-		/* loads on elements: */
-		for (m=0; m<n_elems; m++)
-		{
-			if ((l_e[m]-1) == i)
-			{
-				switch (l_d[m])
-				{
-					case 1: 
-						one_eload(i, (double)l_v1[m], (double)l_v2[m], 0.0, 0.0, (double)l);
-						break;
-					case 2: 
-						one_eload(i, 0.0, 0.0, (double)l_v1[m], (double)l_v2[m], (double)l);
-						break;
-				}
-			}
-		}
+    /* loads on elements: */
+    for (m=0; m<n_elems; m++)
+    {
+      if ((l_e[m]-1) == i)
+      {
+        switch (l_d[m])
+        {
+          case 1: 
+            one_eload(i, (double)l_v1[m], (double)l_v2[m], 0.0, 0.0, (double)l);
+            break;
+          case 2: 
+            one_eload(i, 0.0, 0.0, (double)l_v1[m], (double)l_v2[m], (double)l);
+            break;
+        }
+      }
+    }
 
-		/* ke, fe transformation: */
+    /* ke, fe transformation: */
     ke_to_keg(s, c) ;
 
     /* localisation */
@@ -903,12 +912,12 @@ void disps_and_loads()
 
   for (i=0; i<n_nfors; i++)
   {
-		add_one_force(f_n[i], f_d[i], f_v[i]);
+    add_one_force(f_n[i], f_d[i], f_v[i]);
   }
 
   for (i=0; i<n_disps; i++)
   {
-		add_one_disp(d_n[i], d_d[i], d_v[i]);
+    add_one_disp(d_n[i], d_d[i], d_v[i]);
   }
 }
 
@@ -921,7 +930,7 @@ void free_data()
   }
   if (n_elems > 0)
   {
-    free(n1); free(n2);free(E);free(A);free(I);
+    free(n1); free(n2);free(E);free(A);free(I);free(rho);
   }
   if (n_disps > 0)
   {
@@ -941,13 +950,13 @@ void u_to_ue(s,c)
 double s ;
 double c ;
 {
-	int i,j ;
-	double fval ;
+  int i,j ;
+  double fval ;
 
   tran(s, c);
-	for (i=0; i<6; i++) { ue[i] = 0.0 ; }
+  for (i=0; i<6; i++) { ue[i] = 0.0 ; }
   
-	for (i=0; i<6; i++)
+  for (i=0; i<6; i++)
   {
     fval = 0.0 ;
 
@@ -1000,7 +1009,7 @@ int ppos; /* number of computed point (0...div)*/
   Vb = fe[4];
   Mb = fe[5];
 
-	x1 = x_i[n1[epos]-1] ;
+  x1 = x_i[n1[epos]-1] ;
   y1 = y_i[n1[epos]-1] ;
   x2 = x_i[n2[epos]-1] ;
   y2 = y_i[n2[epos]-1] ;
@@ -1022,7 +1031,7 @@ int ppos; /* number of computed point (0...div)*/
              no = na ; nt = nb - no ;
 
              Xo = (no*L)/2 - (no*lenx) 
-							 + ((nt*L)/6 - ((nt*lenx*lenx)/(2*L)) ) ;
+               + ((nt*L)/6 - ((nt*lenx*lenx)/(2*L)) ) ;
              return (Xo  - ((Mb + Ma)/L)  ) ;
              break ;
     case 3 : get_eloads(epos, 2, &na, &nb);
@@ -1044,21 +1053,21 @@ int epos ;
   int i, j, m ;
   float x1,y1, x2,y2, l, s, c, fval ;
 
-	for (i=0; i<6; i++) 
-	{ 
-		fe[i]  = 0.0 ; 
-		feg[i] = 0.0 ; 
-		ue[i]  = 0.0 ; 
-	}
+  for (i=0; i<6; i++) 
+  { 
+    fe[i]  = 0.0 ; 
+    feg[i] = 0.0 ; 
+    ue[i]  = 0.0 ; 
+  }
     
-	/* get initial stuff */
-	for (i=0; i<3; i++)
-	{
-		ueg[i]   = u_val[(3*(n1[epos]-1))+i];
-		ueg[i+3] = u_val[(3*(n2[epos]-1))+i];
-	}
+  /* get initial stuff */
+  for (i=0; i<3; i++)
+  {
+    ueg[i]   = u_val[(3*(n1[epos]-1))+i];
+    ueg[i+3] = u_val[(3*(n2[epos]-1))+i];
+  }
 
-	x1 = x_i[n1[epos]-1] ;
+  x1 = x_i[n1[epos]-1] ;
   y1 = y_i[n1[epos]-1] ;
   x2 = x_i[n2[epos]-1] ;
   y2 = y_i[n2[epos]-1] ;
@@ -1071,8 +1080,8 @@ int epos ;
   u_to_ue(s,c);
   stiff_loc(type[epos], E[epos], A[epos], I[epos], (double)l) ;
 
-	/* compute forces in nodes: */
-	for (i=0; i<6; i++)
+  /* compute forces in nodes: */
+  for (i=0; i<6; i++)
   {
     fval = 0.0 ;
 
@@ -1083,25 +1092,25 @@ int epos ;
     fe[i] -= fval ;
   }
 
-	/* primary forces: */
-	for (m=0; m<n_elems; m++)
-	{
-		if ((l_e[m]-1) == epos)
-		{
-			switch (l_d[m])
-			{
-				case 1: 
-					one_eload(epos, (double)l_v1[m], (double)l_v2[m], 0.0, 0.0, (double)l);
-					break;
-				case 2: 
-					one_eload(epos, 0.0, 0.0, (double)l_v1[m], (double)l_v2[m], (double)l);
-					break;
-			}
-		}
-	}
+  /* primary forces: */
+  for (m=0; m<n_elems; m++)
+  {
+    if ((l_e[m]-1) == epos)
+    {
+      switch (l_d[m])
+      {
+        case 1: 
+          one_eload(epos, (double)l_v1[m], (double)l_v2[m], 0.0, 0.0, (double)l);
+          break;
+        case 2: 
+          one_eload(epos, 0.0, 0.0, (double)l_v1[m], (double)l_v2[m], (double)l);
+          break;
+      }
+    }
+  }
 
-	/* get reactions: */
-	for (i=0; i<6; i++)
+  /* get reactions: */
+  for (i=0; i<6; i++)
   {
     fval = 0.0 ;
 
@@ -1112,19 +1121,19 @@ int epos ;
     feg[i] += fval ;
   }
 
-	for (i=0; i<n_disps; i++)
-	{
-		if (d_n[i] == n1[epos]) { d_v[i] +=  feg[d_d[i]-1] ; }
-		if (d_n[i] == n2[epos]) { d_v[i] +=  feg[d_d[i]+2] ; }
+  for (i=0; i<n_disps; i++)
+  {
+    if (d_n[i] == n1[epos]) { d_v[i] +=  feg[d_d[i]-1] ; }
+    if (d_n[i] == n2[epos]) { d_v[i] +=  feg[d_d[i]+2] ; }
 
-		for (j=0; j<n_nfors; j++)
-		{
-			if ((d_n[i] == f_n[j]) && (d_d[i] == f_d[j]))
-			{
-				d_v[i] += f_v[j] ;
-			}
-		}
-	}
+    for (j=0; j<n_nfors; j++)
+    {
+      if ((d_n[i] == f_n[j]) && (d_d[i] == f_d[j]))
+      {
+        d_v[i] += f_v[j] ;
+      }
+    }
+  }
 }
 
 
@@ -1132,112 +1141,112 @@ int epos ;
 void results(fw)
 FILE *fw;
 {
-	int i;
+  int i;
 
-	fprintf(fw,"\nFINAL REPORT\n");
+  fprintf(fw,"\nFINAL REPORT\n");
 
-	fprintf(fw,"\nNodes:\n");
-	fprintf(fw," Num     X            Y:\n");
-	for (i=0; i<n_nodes; i++)
-	{
-		fprintf(fw," %3d %e %e\n",i+1, x_i[i], y_i[i]);
-	}
+  fprintf(fw,"\nNodes:\n");
+  fprintf(fw," Num     X            Y:\n");
+  for (i=0; i<n_nodes; i++)
+  {
+    fprintf(fw," %3d %e %e\n",i+1, x_i[i], y_i[i]);
+  }
 
-	fprintf(fw,"\nElements:\n");
-	fprintf(fw," Num Node1 Node2     E             A           I:\n");
-	for (i=0; i<n_elems; i++)
-	{
-		fprintf(fw," %3d   %3d   %3d %e %e %e ",i+1,n1[i],n2[i],E[i],A[i],I[i]);
-		switch(type[i])
-		{
-			case 0: fprintf(fw,"|--|\n");break;
-			case 1: fprintf(fw,"o--|\n");break;
-			case 2: fprintf(fw,"|--o\n");break;
-			case 3: fprintf(fw,"o--o\n");break;
-			default: fprintf(fw,"unknown!\n");break;
-		}
-	}
+  fprintf(fw,"\nElements:\n");
+  fprintf(fw," Num Node1 Node2     E             A           I:\n");
+  for (i=0; i<n_elems; i++)
+  {
+    fprintf(fw," %3d   %3d   %3d %e %e %e ",i+1,n1[i],n2[i],E[i],A[i],I[i]);
+    switch(type[i])
+    {
+      case 0: fprintf(fw,"|--|\n");break;
+      case 1: fprintf(fw,"o--|\n");break;
+      case 2: fprintf(fw,"|--o\n");break;
+      case 3: fprintf(fw,"o--o\n");break;
+      default: fprintf(fw,"unknown!\n");break;
+    }
+  }
 
-	fprintf(fw,"\nSupports in nodes:\n");
-	fprintf(fw," Num Node Dir Size:\n");
-	for (i=0; i<n_disps; i++)
-	{
-		fprintf(fw," %3d  %3d ",i+1, d_n[i]);
-		switch(d_d[i])
-		{
-			case 1: fprintf(fw,"-->");break;
-			case 2: fprintf(fw,"/|\\");break;
-			case 3: fprintf(fw,"__^");break;
-			default: fprintf(fw,"unknown!");break;
-		}
-		fprintf(fw," %e\n",d_v[i]);
-	}
+  fprintf(fw,"\nSupports in nodes:\n");
+  fprintf(fw," Num Node Dir Size:\n");
+  for (i=0; i<n_disps; i++)
+  {
+    fprintf(fw," %3d  %3d ",i+1, d_n[i]);
+    switch(d_d[i])
+    {
+      case 1: fprintf(fw,"-->");break;
+      case 2: fprintf(fw,"/|\\");break;
+      case 3: fprintf(fw,"__^");break;
+      default: fprintf(fw,"unknown!");break;
+    }
+    fprintf(fw," %e\n",d_v[i]);
+  }
 
-	fprintf(fw,"\nLoads in nodes:\n");
-	fprintf(fw," Num Node Dir Size:\n");
-	for (i=0; i<n_nfors; i++)
-	{
-		fprintf(fw," %3d  %3d ",i+1, f_n[i]);
-		switch(f_d[i])
-		{
-			case 1: fprintf(fw,"-->");break;
-			case 2: fprintf(fw,"/|\\");break;
-			case 3: fprintf(fw,"__^");break;
-			default: fprintf(fw,"unknown!");break;
-		}
-		fprintf(fw," %e\n",f_v[i]);
-	}
+  fprintf(fw,"\nLoads in nodes:\n");
+  fprintf(fw," Num Node Dir Size:\n");
+  for (i=0; i<n_nfors; i++)
+  {
+    fprintf(fw," %3d  %3d ",i+1, f_n[i]);
+    switch(f_d[i])
+    {
+      case 1: fprintf(fw,"-->");break;
+      case 2: fprintf(fw,"/|\\");break;
+      case 3: fprintf(fw,"__^");break;
+      default: fprintf(fw,"unknown!");break;
+    }
+    fprintf(fw," %e\n",f_v[i]);
+  }
 
-	fprintf(fw,"\nElement loads:\n");
-	fprintf(fw," Num Node Dir Sizes (start..end):\n");
-	for (i=0; i<n_eload; i++)
-	{
-		fprintf(fw," %3d  %3d ",i+1, l_e[i]);
-		switch(l_d[i])
-		{
-			case 1: fprintf(fw,">>>");break;
-			case 2: fprintf(fw,"vvv");break;
-			default: fprintf(fw,"unknown!");break;
-		}
-		fprintf(fw," %e..%e\n",l_v1[i],l_v2[i]);
-	}
+  fprintf(fw,"\nElement loads:\n");
+  fprintf(fw," Num Node Dir Sizes (start..end):\n");
+  for (i=0; i<n_eload; i++)
+  {
+    fprintf(fw," %3d  %3d ",i+1, l_e[i]);
+    switch(l_d[i])
+    {
+      case 1: fprintf(fw,">>>");break;
+      case 2: fprintf(fw,"vvv");break;
+      default: fprintf(fw,"unknown!");break;
+    }
+    fprintf(fw," %e..%e\n",l_v1[i],l_v2[i]);
+  }
 
-	fprintf(fw,"\nDEFORMATIONS:\n");
-	fprintf(fw," Node  X            Y            Rotation:\n");
-	for (i=0; i<n_nodes; i++)
-	{
-		fprintf(fw," %4d %e %e %e\n", i+1, u_val[3*i], u_val[3*i+1], u_val[3*i+2]);
-	}
+  fprintf(fw,"\nDEFORMATIONS:\n");
+  fprintf(fw," Node  X            Y            Rotation:\n");
+  for (i=0; i<n_nodes; i++)
+  {
+    fprintf(fw," %4d %e %e %e\n", i+1, u_val[3*i], u_val[3*i+1], u_val[3*i+2]);
+  }
 
-	for (i=0; i<n_disps; i++)
-	{
-		d_v[i] = 0.0 ; /* going to reuse it for reactions! */
-	}
+  for (i=0; i<n_disps; i++)
+  {
+    d_v[i] = 0.0 ; /* going to reuse it for reactions! */
+  }
 
-	fprintf(fw,"\nINTERNAL FORCES (beginning and end of elements):\n");
-	fprintf(fw," Element  FX1      FY1       M1        FX2        FY2       M2:\n");
-	for (i=0; i<n_elems; i++)
-	{
-		res_loc(i);
-		fprintf(fw," %3d %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e\n",
-			 	i+1, fe[0], fe[1], fe[2], fe[3], fe[4], fe[5] );
-	}
+  fprintf(fw,"\nINTERNAL FORCES (beginning and end of elements):\n");
+  fprintf(fw," Element  FX1      FY1       M1        FX2        FY2       M2:\n");
+  for (i=0; i<n_elems; i++)
+  {
+    res_loc(i);
+    fprintf(fw," %3d %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e\n",
+         i+1, fe[0], fe[1], fe[2], fe[3], fe[4], fe[5] );
+  }
 
-	fprintf(fw,"\nREACTIONS:\n");
+  fprintf(fw,"\nREACTIONS:\n");
 
-	fprintf(fw," Num Node Dir Size:\n");
-	for (i=0; i<n_disps; i++)
-	{
-		fprintf(fw," %3d  %3d ",i+1, d_n[i]);
-		switch(d_d[i])
-		{
-			case 1: fprintf(fw,"-->");break;
-			case 2: fprintf(fw,"/|\\");break;
-			case 3: fprintf(fw,"__^");break;
-			default: fprintf(fw,"unknown!");break;
-		}
-		fprintf(fw," %e\n",(-1.0)*d_v[i]);
-	}
+  fprintf(fw," Num Node Dir Size:\n");
+  for (i=0; i<n_disps; i++)
+  {
+    fprintf(fw," %3d  %3d ",i+1, d_n[i]);
+    switch(d_d[i])
+    {
+      case 1: fprintf(fw,"-->");break;
+      case 2: fprintf(fw,"/|\\");break;
+      case 3: fprintf(fw,"__^");break;
+      default: fprintf(fw,"unknown!");break;
+    }
+    fprintf(fw," %e\n",(-1.0)*d_v[i]);
+  }
 }
 
 /** computes and prints internal forces in elements */
@@ -1248,23 +1257,23 @@ FILE *fw;
   int div = 10 ;
 
   fprintf(fw,"\n# DETAILED INTERNAL FORCES: #\n");
-	fprintf(fw,"# Element  x      FX        FY        M\n");
-	for (i=0; i<n_elems; i++)
-	{
-		res_loc(i);
+  fprintf(fw,"# Element  x      FX        FY        M\n");
+  for (i=0; i<n_elems; i++)
+  {
+    res_loc(i);
     for (j=0; j<=div; j++)
     {
-		fprintf(fw," %3d %2.3e %2.3e %2.3e %2.3e\n",
-			 	i+1,
+    fprintf(fw," %3d %2.3e %2.3e %2.3e %2.3e\n",
+         i+1,
         in_force(0, i, div, j),
         in_force(1, i, div, j),
         in_force(2, i, div, j),
         in_force(3, i, div, j)
         );
     }
-	  
+    
     fprintf(fw,"\n");
-	}
+  }
 }
 
 /** Compute internal force (N, V, M) for given point of beam
@@ -1290,7 +1299,7 @@ double *vy;
   Vb = fe[4];
   Mb = fe[5];
 
-	x1 = x_i[n1[epos]-1] ;
+  x1 = x_i[n1[epos]-1] ;
   y1 = y_i[n1[epos]-1] ;
   x2 = x_i[n2[epos]-1] ;
   y2 = y_i[n2[epos]-1] ;
@@ -1319,7 +1328,7 @@ double *vy;
              no = na ; nt = nb - no ;
 
              Xo = (no*L)/2 - (no*lenx) 
-							 + ((nt*L)/6 - ((nt*lenx*lenx)/(2*L)) ) ;
+               + ((nt*L)/6 - ((nt*lenx*lenx)/(2*L)) ) ;
              val = (Xo  - ((Mb + Ma)/L)  ) ;
              break ;
     case 3 : get_eloads(epos, 2, &na, &nb);
@@ -1358,17 +1367,17 @@ FILE *fw;
   }
   if (dmult > 1e-8) { dmult = 0.3*size/dmult; }
 
-	for (i=0; i<n_disps; i++)
+  for (i=0; i<n_disps; i++)
   {
     if (fabs(d_v[i]) > mult) {mult = fabs(d_v[i]);}
   }
   if (mult > 1e-6){mult = 0.3*size/mult ;}
 
   fprintf(fw,"\n# DETAILED INTERNAL FORCES (plot data): #\n");
-	fprintf(fw,"# Element  x       y      Nx    Ny      Vx    Vy      Mx      My\n");
-	for (i=0; i<n_elems; i++)
-	{
-		res_loc(i);
+  fprintf(fw,"# Element  x       y      Nx    Ny      Vx    Vy      Mx      My\n");
+  for (i=0; i<n_elems; i++)
+  {
+    res_loc(i);
     for (j=0; j<=div; j++)
     {
       in_gfx(0, i, div, j, mult, &x,  &y);
@@ -1381,14 +1390,14 @@ FILE *fw;
       {
         fprintf(fw,
         " %3d %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e\n",
-			 	i+1, x,y, x,y,x,y,x,y 
+         i+1, x,y, x,y,x,y,x,y 
         );
       }
 
       /* actual data output */
-		  fprintf(fw,
+      fprintf(fw,
         " %3d %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e\n",
-			 	i+1, x,y, nx,ny,vx,vy,mx,my 
+         i+1, x,y, nx,ny,vx,vy,mx,my 
       );
       
       /* last line - for nicer plot... */
@@ -1396,13 +1405,13 @@ FILE *fw;
       {
         fprintf(fw,
         " %3d %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e\n",
-			 	i+1, x,y, x,y,x,y,x,y 
+         i+1, x,y, x,y,x,y,x,y 
         );
       }
     }
-	  
+    
     fprintf(fw,"\n");
-	}
+  }
 }
 
 /** Find (approximation of) extreme values of N, V, M on beam */
@@ -1427,7 +1436,7 @@ double *mpos; /* position of max M absolute from 1st node */
 
   for (j=0; j<=div; j++)
   {
-		res_loc(epos);
+    res_loc(epos);
     in_gfx(0, epos, div, j, 1.0, &pos,  &val0);
 
     in_gfx(1, epos, div, j, 1.0, &val, &val0);
@@ -1526,8 +1535,8 @@ char *argv[];
   FILE *fd = NULL ;
   FILE *fp = NULL ;
 
-	fprintf(stderr,"\nDDFOR 1.0.2: direct stiffness method solver for statics of 2D frames.\n");
-	fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
+  fprintf(stderr,"\nDDFOR 1.0.3: direct stiffness method solver for statics of 2D frames.\n");
+  fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
 
   if (argc < 2)
   {
@@ -1566,7 +1575,7 @@ char *argv[];
     if ((fo=fopen(argv[2],"w")) == NULL)
     {
       fprintf(stderr,"Failed to open output file!\n");
-			fo = stdout ;
+      fo = stdout ;
     }
   }
 
@@ -1581,7 +1590,7 @@ char *argv[];
     if ((fd=fopen(argv[3],"w")) == NULL)
     {
       fprintf(stderr,"Failed to open output file!\n");
-			fd = NULL ;
+      fd = NULL ;
     }
   }
 
@@ -1596,7 +1605,7 @@ char *argv[];
     if ((fp=fopen(argv[4],"w")) == NULL)
     {
       fprintf(stderr,"Failed to open gfx file!\n");
-			fp = NULL ;
+      fp = NULL ;
     }
   }
 
@@ -1608,14 +1617,14 @@ char *argv[];
   }
 
   stiff(); 
-	disps_and_loads();
+  disps_and_loads();
 
-	fprintf(stderr,"\nSolution: \n");
+  fprintf(stderr,"\nSolution: \n");
   solve_eqs();
-	fprintf(stderr,"End of solution. \n");
+  fprintf(stderr,"End of solution. \n");
 
   results(fo);
-	fclose(fo);
+  fclose(fo);
 
   if (fd != NULL) 
   { 

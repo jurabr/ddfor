@@ -1,6 +1,6 @@
 DDFOR 1.0: Simple direct stiffness method solver (for statics of frames).
 
-This program is written in K&R syntax of the C programming language.
+This program is written in the K&R syntax of the C programming language.
 It is meant for retrocomputing (computers from 80').
 
 Licensed under the GNU GPL version 2.
@@ -12,8 +12,8 @@ MANUAL
 Introduction
 ------------
 
-The code can solve beams and frames in x-y plane. Only static loads (forces in
-nodes, moments in nodes, continuous loads on beams are allowed).
+The code can solve beams and frames in x-y plane. Only static loads (forces 
+in nodes, moments in nodes, continuous loads on beams are allowed).
 
 The code uses the Direct Stiffness Method
 (http://en.wikipedia.org/wiki/Direct_stiffness_method)
@@ -24,16 +24,17 @@ Usage
 
 ddfor [inputfile [outputfile] [elementforcesfile] [plotfile]]
 
-If no inputfile is given then program pseudo-interactively asks for data (note:
-there is no command line editing and no undo). The pseudo-interactive feature 
-may not work in no-POSIX environments (in DOS). 
-If no output file is defined then results will by written to the terminal.
+If no "inputfile" is given then program pseudo-interactively asks for data 
+(note: there is no command line editing and no undo). The pseudo-interactive 
+feature may not work in no-POSIX environments (in DOS). 
+
+If no "outputfile" is defined then results will by written to the terminal.
 Detailed list of internal forces is only available if the "elementforcesfile"
 file name is provided. 
+
 The "plotfile" can be used to save data in Gnuplot-compatible form. The 2nd 
 and 3rd columns cover X and Y coordinates, the 4th and 5th are for  N, the 6th
 and 7th are for V and the 8th and 9th are for M internal forces.
-
 
 Conventions
 -----------
@@ -89,17 +90,38 @@ Element loads types
 2 .. continuous load in Y direction (v)
 
 
+Graphical output recomendations
+-------------------------------
+
+The Gnuplot software can be used for visualiztion of results 
+( http://www.gnuplot.info ). The output is comatible with 
+the Gnuplot 3.2 and better. The command syntax is:
+
+Geometry of structure:
+plot "plotfile" using 2:4 with linespoints
+
+Normal forces:
+plot "plotfile" using 2:4 with lines,"plotfile" using 2:5
+
+Shear forces:
+plot "plotfile" using 2:4 with lines,"plotfile" using 2:7
+
+Bending moments:
+plot "plotfile" using 2:4 with lines,"plotfile" using 2:9
+
+
 
 Compatibility (tested)
 ----------------------
 
 GNU/Linux (Ubuntu/x86)
 GNU/Linux (Debian/armhf)
+GNU/Linux (Debian/arm)
 GNU/Linux (OpenWRT/mipsel)
 2.11BSD (PDP-11)
 IRIX 6.5 (SGI MIPS)
 IRIX 5.3 (SGI MIPS)
 Mac OS 10.3 (PowerPC)
 MS-DOS 2.x (Atari Portfolio)
-MS-DOS 3.x (HP 95LX)
+MS-DOS 3.x (HP 95LX, Psion MC600)
 MS-DOS 5.x (HP 200LX)
