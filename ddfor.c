@@ -85,7 +85,7 @@ FILE *fw ;
 {
   int i;
 
-  fprintf(stderr,"Input:\n");
+  fprintf(stderr,"Number of nodes:\n");
   fscanf(fw,"%d", &n_nodes);
   if (n_nodes <= 0)
   {
@@ -1526,6 +1526,7 @@ FILE *fw;
   free(fld) ; fld = NULL ;
 }
 
+#ifndef GR
 int main(argc, argv)
 int argc ;
 char *argv[];
@@ -1644,5 +1645,6 @@ char *argv[];
   free_data();
   return(0);
 }
+#endif
 
 /* end of ddfor.c */
