@@ -3,7 +3,6 @@
 #include <graphics.h>
 #include <bios.h>
 
-
 /** External stuff for ddfor.c: */
 extern int    n_nodes ;
 extern int    n_elems ;
@@ -60,10 +59,15 @@ extern double *q    ;
 
 
 /* GFX parameters: */
-int okraj =   3 ;
-int imaxx  = 640 ;
-int imaxy  = 200 ;
+int okraj   = 0 ; /* border */
+int imaxx   = 0 ;
+int imaxy   = 0 ;
+double xcorr= 1.0 ; /* x size correction */
+int gr_size = 3 ; /* size of symbols */
 
+double g_dx = 0.0 ;
+double g_dy = 0.0 ;
+double gmul = 1.0 ;
 
 /** Reading of data from file */
 extern int read_data(FILE *fw);
@@ -143,13 +147,11 @@ extern void in_gfx(int type, int epos, int div, int ppos, double *mult, double *
 void gr_init(void)
 {
   setvmode(6); /* CGA 640x200 BW */
-#if 0
-  move_to(okraj,okraj); /* left upper edge */
-  line_to(imaxx-okraj,okraj);
-  line_to(imaxx-okraj,imaxy-okraj+1); /* lower right edge */
-  line_to(okraj,imaxy-okraj+1);
-  line_to(okraj,okraj);
-#endif
+  okraj =   15 ;
+  imaxx  = 320 ; /* limited by a reason - real screen parameters */
+  imaxy  = 200 ;
+  xcorr  = 2.0 ; /* for MC600, 200LX */
+  gr_size= 3   ;
 }
 
 /** restore text mode */
@@ -159,35 +161,106 @@ void gr_stop(void)
   return(0);
 }
 
+/* gets dimension of the structure and the coefficients */
+void set_minmax(void)
+{
+  double minx, maxx, miny, maxy ;
+  double lx, ly, mulx, muly, ix, iy ;
+  int i ;
+
+  maxx = x_i[0]; maxy = y_i[0];
+  minx = x_i[0]; miny = y_i[0];
+
+  for (i=0; i<n_nodes; i++) /* get limits */
+  {
+    if (x_i[i] > maxx) { maxx = x_i[i] ; }
+    if (x_i[i] < minx) { minx = x_i[i] ; }
+    if (y_i[i] > maxy) { maxy = y_i[i] ; }
+    if (y_i[i] < miny) { miny = y_i[i] ; }
+  }
+  g_dx = (-1.0)*minx ; /* starting points */
+  g_dy = (-1.0)*miny ;
+
+  lx = abs(maxx - minx) ; /* multipliers */
+  ly = abs(maxy - miny) ;
+  mulx = 0.0 ; muly = 0.0 ;
+  ix = (double)(imaxx - (2*okraj)); 
+  iy = (double)(imaxy - (3*okraj)); 
+  if (lx > 0.0) { mulx = ix/lx; }
+  if (ly > 0.0) { muly = iy/ly; }
+  
+  if (muly == 0.0) muly = mulx ;
+  if (mulx == 0.0) mulx = muly ;
+
+  if (mulx < muly) { gmul = mulx ; }
+  else             { gmul = muly ; }
+
+  /*fprintf(stderr,"GMUL (%f %f): %f /ix=%f iy=%f\n",mulx,muly,gmul,ix,iy); */
+}
+
+/** Computation of screen coordinates */
+int x_pos(double x) { return((int)(xcorr*(x - g_dx)*gmul))+okraj; }
+int y_pos(double y) { return(imaxy - ((int)((y - g_dy)*gmul))-okraj); }
+
+/** plots supports */
+void plot_disp(int node, int type, double val, int size)
+{
+  int x,y;
+
+  x = x_pos(x_i[node-1]);
+  y = y_pos(y_i[node-1]);
+
+  switch (type)
+  {
+    case 1: move_to(x,y); line_to(x-2*size*xcorr, y);
+            move_to(x-2*size*xcorr, y+size);
+            line_to(x-2*size*xcorr, y-size);
+            break ;
+    case 2: move_to(x,y); line_to(x,y+2*size);
+            move_to(x+size*xcorr, y+2*size);
+            line_to(x-size*xcorr, y+2*size);
+            break ;
+    case 3: move_to(x-size*xcorr,y-size);
+            line_to(x+size*xcorr,y-size);
+            line_to(x+size*xcorr,y+size);
+            line_to(x-size*xcorr,y+size);
+            line_to(x-size*xcorr,y-size);
+            break ;
+  }
+}
+
+/** plot nodes */
+void plot_node(double x_i, double y_i)
+{
+  int x,y;
+
+  x = x_pos(x_i);
+  y = y_pos(y_i);
+
+  move_to(x,y-2);
+  line_to(x+2,y);
+  line_to(x,y+2);
+  line_to(x-2,y);
+  line_to(x,y-2);
+}
+
 /** plot geometry */
 void plot_struct(void)
 {
   int i,j ;
-  int div = 10 ;
-  double x,y;
-  double minx,maxx,miny,maxy;
-  double mult, tmp ;
+
+  /* nodes: */
+  for (i=0; i<n_nodes; i++) { plot_node(x_i[i],y_i[i]); }
   
-  minx=0; maxx=0; miny=0; maxy=0;
-
-  /* compute structural limits */
-  for (i=0; i<n_nodes; i++)
-  {
-    if (maxx < x_i[i]) maxx = x_i[i] ;
-    if (minx > x_i[i]) minx = x_i[i] ;
-    if (maxy < y_i[i]) maxy = y_i[i] ;
-    if (miny > y_i[i]) miny = y_i[i] ;
-  }
-
-  mult = 1.2*(maxx-minx) / ((double)(imaxx - okraj*2)) ;
-  tmp  = 1.2*(maxy-miny) / ((double)(imaxy - okraj*2)) ;
-  if (tmp > mult) mult = tmp ;
-
+  /* elements: */
   for (i=0; i<n_elems; i++)
   {
-    move_to((int)(okraj+(float)x_i[n1[i]]/mult), (int)(imaxy-okraj-(float)y_i[n1[i]]/mult));
-    line_to((int)(okraj+(float)x_i[n2[i]]/mult), (int)(imaxy-okraj-(float)y_i[n2[i]]/mult));
+    move_to(x_pos(x_i[n1[i]-1]), y_pos(y_i[n1[i]-1]));
+    line_to(x_pos(x_i[n2[i]-1]), y_pos(y_i[n2[i]-1]));
   }
+  
+  /* supports: */
+  for (i=0; i<n_disps; i++) { plot_disp(d_n[i],d_d[i],d_v[i],gr_size); }
 }
 
 /** prints internal forces in elements gfx-friendly form */
@@ -320,7 +393,7 @@ int main(int argc, char *argv[])
     }
   }
 
-  if (alloc_kf() != 0 )
+  if  (alloc_kf() != 0 )
   {
     free_data();
     return(-1);
@@ -333,17 +406,18 @@ int main(int argc, char *argv[])
   solve_eqs();
   fprintf(stderr,"End of solution. \n");
 
-  results(fo);
+  /* results(fo); */
   fclose(fo);
 
   if (fd != NULL) 
   { 
-    eint_results(fd); 
+    /* eint_results(fd);  */
     fclose(fd);
   }
 
   /** Graphics: */
   gr_init();
+  set_minmax();
   plot_struct();
   getchar();
   gr_stop();
