@@ -62,12 +62,12 @@ extern double *q    ;
 int okraj   = 0 ; /* border */
 int imaxx   = 0 ;
 int imaxy   = 0 ;
-double xcorr= 1.0 ; /* x size correction */
 int gr_size = 3 ; /* size of symbols */
 
 double g_dx = 0.0 ;
 double g_dy = 0.0 ;
 double gmul = 1.0 ;
+double gsiz = 0.0 ;
 
 /** Reading of data from file */
 extern int read_data(FILE *fw);
@@ -140,17 +140,16 @@ extern int beam_max(int type, int epos, int div, double *nmax, double *npos, dou
 
 /** Compute internal force (N, V, M) for given point of beam
  *  This routine is meant for plotting tools */
-extern void in_gfx(int type, int epos, int div, int ppos, double *mult, double *vx, double *vy);
+extern void in_gfx(int type, int epos, int div, int ppos, double mult, double *vx, double *vy);
 
 
 /* sets GFX mode */
 void gr_init(void)
 {
-  setvmode(6); /* CGA 640x200 BW */
+  setvmode(5); /* CGA 320x200 BW */
   okraj =   15 ;
-  imaxx  = 320 ; /* limited by a reason - real screen parameters */
+  imaxx  = 320 ; 
   imaxy  = 200 ;
-  xcorr  = 2.0 ; /* for MC600, 200LX */
   gr_size= 3   ;
 }
 
@@ -192,14 +191,15 @@ void set_minmax(void)
   if (muly == 0.0) muly = mulx ;
   if (mulx == 0.0) mulx = muly ;
 
-  if (mulx < muly) { gmul = mulx ; }
+  if (mulx < muly) { gmul = mulx ; } /* gfx multiplier */
   else             { gmul = muly ; }
 
-  /*fprintf(stderr,"GMUL (%f %f): %f /ix=%f iy=%f\n",mulx,muly,gmul,ix,iy); */
+  if (lx > ly) { gsiz = lx ; } /* size of structure */
+  else         { gsiz = ly ; }
 }
 
 /** Computation of screen coordinates */
-int x_pos(double x) { return((int)(xcorr*(x - g_dx)*gmul))+okraj; }
+int x_pos(double x) { return((int)((x - g_dx)*gmul))+okraj; }
 int y_pos(double y) { return(imaxy - ((int)((y - g_dy)*gmul))-okraj); }
 
 /** plots supports */
@@ -212,19 +212,19 @@ void plot_disp(int node, int type, double val, int size)
 
   switch (type)
   {
-    case 1: move_to(x,y); line_to(x-2*size*xcorr, y);
-            move_to(x-2*size*xcorr, y+size);
-            line_to(x-2*size*xcorr, y-size);
+    case 1: move_to(x,y); line_to(x-2*size, y);
+            move_to(x-2*size, y+size);
+            line_to(x-2*size, y-size);
             break ;
     case 2: move_to(x,y); line_to(x,y+2*size);
-            move_to(x+size*xcorr, y+2*size);
-            line_to(x-size*xcorr, y+2*size);
+            move_to(x+size, y+2*size);
+            line_to(x-size, y+2*size);
             break ;
-    case 3: move_to(x-size*xcorr,y-size);
-            line_to(x+size*xcorr,y-size);
-            line_to(x+size*xcorr,y+size);
-            line_to(x-size*xcorr,y+size);
-            line_to(x-size*xcorr,y-size);
+    case 3: move_to(x-size,y-size);
+            line_to(x+size,y-size);
+            line_to(x+size,y+size);
+            line_to(x-size,y+size);
+            line_to(x-size,y-size);
             break ;
   }
 }
@@ -242,6 +242,18 @@ void plot_node(double x_i, double y_i)
   line_to(x,y+2);
   line_to(x-2,y);
   line_to(x,y-2);
+}
+
+/** plot loads */
+void plot_forces(void)
+{
+  int i ;
+  double mult ;
+
+  /* multiplier for forces: */
+  for (i=0; i<n_nfors; i++)
+    { if (abs(f_v[i]) > mult) {mult = abs(f_v[i]);} }
+  if (mult > 1e-8){mult = (double)okraj/mult ;}
 }
 
 /** plot geometry */
@@ -264,74 +276,43 @@ void plot_struct(void)
 }
 
 /** prints internal forces in elements gfx-friendly form */
-void gfx_plot_results(FILE *fw)
+void gfx_plot_results(int type)
 {
   int i,j ;
   int div = 10 ;
-  double x,y, nx,ny, vx,vy, mx,my ;
-  double size = 0.0;
+  double x,y, mx,my ;
   double mult = 0.0;
   double dmult = 0.0;
 
-  /* compute multiplier(s) first */
-  for (i=0; i<n_nodes; i++)
-  {
-    if (fabs(x_i[i]) > size) {size = fabs(x_i[i]);}
-    if (fabs(y_i[i]) > size) {size = fabs(y_i[i]);}
-    for (j=(i*3); j<((i*3)+3); j++) /* unused just now */
-    {
-      if (fabs(u_val[j]) > dmult) {dmult = fabs(u_val[j]);}
-    }
-  }
-  if (dmult > 1e-8) { dmult = 0.3*size/dmult; }
+  /* multiplier for deformations */
+  dmult = abs(u_val[0]) ;
+  for (i=1; i<K_len; i++)
+    { if (dmult < abs(u_val[i])) { dmult = abs(u_val[i]); } }
+  if (dmult > 1e-6) { dmult = 0.3 * (gsiz/dmult) ;  } 
 
-  for (i=0; i<n_disps; i++)
-  {
-    if (fabs(d_v[i]) > mult) {mult = fabs(d_v[i]);}
-  }
-  if (mult > 1e-6){mult = 0.3*size/mult ;}
+  mult = 0.3*dmult ; /* TODO: replace with proper code */
 
-  fprintf(fw,"\n# DETAILED INTERNAL FORCES (plot data): #\n");
-  fprintf(fw,"# Element  x       y      Nx    Ny      Vx    Vy      Mx      My\n");
   for (i=0; i<n_elems; i++)
   {
     res_loc(i);
     for (j=0; j<=div; j++)
     {
       in_gfx(0, i, div, j, mult, &x,  &y);
-      in_gfx(1, i, div, j, mult, &nx, &ny);
-      in_gfx(2, i, div, j, mult, &vx, &vy);
-      in_gfx(3, i, div, j, mult, &mx, &my);
-
-      /* first line - for nicer plot... */
-      if (j == 0)
-      {
-        fprintf(fw,
-        " %3d %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e\n",
-         i+1, x,y, x,y,x,y,x,y 
-        );
+      in_gfx(type, i, div, j, mult, &mx,  &my);
+      if (j == 0 ) 
+      { 
+        move_to(x_pos(x), y_pos(y)); 
+        line_to(x_pos(mx), y_pos(my)); 
       }
-
-      /* actual data output */
-      fprintf(fw,
-        " %3d %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e\n",
-         i+1, x,y, nx,ny,vx,vy,mx,my 
-      );
-      
-      /* last line - for nicer plot... */
-      if (j==div)
+      else
       {
-        fprintf(fw,
-        " %3d %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e %2.3e\n",
-         i+1, x,y, x,y,x,y,x,y 
-        );
+        line_to(x_pos(mx), y_pos(my)); 
+        line_to(x_pos(x), y_pos(y));   /* these 2 lines are for filling */
+        move_to(x_pos(mx), y_pos(my)); 
       }
     }
-    
-    fprintf(fw,"\n");
   }
 }
-
 
 /** main routine */
 int main(int argc, char *argv[])
@@ -340,7 +321,7 @@ int main(int argc, char *argv[])
   FILE *fo = NULL ;
   FILE *fd = NULL ;
 
-  fprintf(stderr,"\nDDFOR 1.0.4: direct stiffness method solver for statics of 2D frames.\n");
+  fprintf(stderr,"\nDDFOR/GFX 0.1: direct stiffness method solver for statics of 2D frames.\n");
   fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
 
   if (argc < 2)
@@ -406,19 +387,14 @@ int main(int argc, char *argv[])
   solve_eqs();
   fprintf(stderr,"End of solution. \n");
 
-  /* results(fo); */
-  fclose(fo);
-
-  if (fd != NULL) 
-  { 
-    /* eint_results(fd);  */
-    fclose(fd);
-  }
+  if (fo != NULL) { results(fo); fclose(fo); }
+  if (fd != NULL) { eint_results(fd); fclose(fd); }
 
   /** Graphics: */
   gr_init();
   set_minmax();
   plot_struct();
+  gfx_plot_results(3);
   getchar();
   gr_stop();
 
