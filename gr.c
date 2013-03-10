@@ -229,6 +229,56 @@ void plot_disp(int node, int type, double val, int size)
   }
 }
 
+/** plots forces  */
+void plot_force(int node, int type, double val, int size)
+{
+  int x,y;
+
+  x = x_pos(x_i[node-1]);
+  y = y_pos(y_i[node-1]);
+
+  switch (type)
+  {
+    case 1: if (val > 0.0)
+            {
+              move_to(x+4*size, y);
+              line_to(x,y);
+              line_to(x+size, y-size);
+              move_to(x+size, y+size);
+              line_to(x, y);
+            }
+            else
+            {
+              move_to(x-4*size, y);
+              line_to(x,y);
+              line_to(x-size, y-size);
+              move_to(x-size, y+size);
+              line_to(x, y);
+            }
+            break ;
+    case 2: /* TODO */
+            if (val > 0.0)
+            {
+              move_to(x, y+4*size);
+              line_to(x,y);
+              line_to(x-size, y+size);
+              move_to(x+size, y+size);
+              line_to(x, y);
+            }
+            else
+            {
+              move_to(x, y-4*size);
+              line_to(x,y);
+              line_to(x-size, y-size);
+              move_to(x+size, y-size);
+              line_to(x, y);
+            }
+            break ;
+    case 3: /* TODO */
+            break ;
+  }
+}
+
 /** plot nodes */
 void plot_node(double x_i, double y_i)
 {
@@ -254,6 +304,11 @@ void plot_forces(void)
   for (i=0; i<n_nfors; i++)
     { if (abs(f_v[i]) > mult) {mult = abs(f_v[i]);} }
   if (mult > 1e-8){mult = (double)okraj/mult ;}
+
+  for (i=0; i<n_nfors; i++)
+  {
+    plot_force(f_n[i], f_d[i], f_v[i], (int)(okraj/2)) ;
+  }
 }
 
 /** plot geometry */
@@ -273,6 +328,9 @@ void plot_struct(void)
   
   /* supports: */
   for (i=0; i<n_disps; i++) { plot_disp(d_n[i],d_d[i],d_v[i],gr_size); }
+
+  /* forces */
+  plot_forces();
 }
 
 /** prints internal forces in elements gfx-friendly form */
@@ -320,10 +378,12 @@ int main(int argc, char *argv[])
   FILE *fw = NULL ;
   FILE *fo = NULL ;
   FILE *fd = NULL ;
+  int   c  = NULL ;
 
   fprintf(stderr,"\nDDFOR/GFX 0.1: direct stiffness method solver for statics of 2D frames.\n");
   fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
 
+  /** normal program run: */
   if (argc < 2)
   {
     fprintf(stderr,"No input data file!\n");
@@ -394,8 +454,35 @@ int main(int argc, char *argv[])
   gr_init();
   set_minmax();
   plot_struct();
-  gfx_plot_results(3);
-  getchar();
+  /* TODO keyboard control of plotting will be here one day.. */
+  c = getchar();
+  while ((c=getch()) == 27)
+  {
+    switch c
+    {
+      case 'n': /* normal forces */ 
+      case 'N': 
+      case 'a': 
+      case 'A':
+        gfx_plot_results(1); 
+        break ;
+      case 'v': /* shear forces */ 
+      case 'V':
+        gfx_plot_results(2); 
+        break ; 
+      case 'm': /* bending moments */ 
+      case 'M':
+        gfx_plot_results(3);
+        break ;
+      case 'i': /* structure */
+      case 'I':
+      case 's':
+      case 'S':
+      default: 
+        gfx_plot_results(0); 
+        break ; 
+    }
+  }
   gr_stop();
 
   free_sol_data();
