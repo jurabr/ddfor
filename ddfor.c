@@ -248,12 +248,10 @@ FILE *fw ;
   fscanf(fw,"%d", &n_nfors);
   if (n_nfors <= 0)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
-    free(d_n);free(d_d);free(d_v);
     fprintf(stderr,"No forces in nodes!\n");
-    return(-1);
   }
-
+  else
+  {
   if ((f_n=(int *)malloc(n_nfors*sizeof(int))) == NULL)
   {
     free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
@@ -278,7 +276,7 @@ FILE *fw ;
     return(-2);
   }
   
-  /* read supports data */
+  /* read forces data */
 #ifdef UI
   fprintf(stderr,"Forces in nodes data (node direction size):\n");
 #endif
@@ -291,6 +289,7 @@ FILE *fw ;
 #else
   fprintf(stderr,"  Forces in nodes: %d\n",n_nfors);
 #endif
+  } /* end of n_nfors > 0 */
 
 
   /* loads on elements */
@@ -300,13 +299,10 @@ FILE *fw ;
   fscanf(fw,"%d", &n_eload);
   if (n_eload <= 0)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
-    free(d_n);free(d_d);free(d_v);
-    free(f_n);free(f_d);free(f_v);
-    fprintf(stderr,"No element loads!\n");
-    return(-1);
+    fprintf(stderr,"No element loads.\n");
   }
-
+  else
+  {
   if ((l_e=(int *)malloc(n_eload*sizeof(int))) == NULL)
   {
     free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
@@ -357,6 +353,7 @@ FILE *fw ;
 #else
   fprintf(stderr,"  Element loads:   %d\n",n_eload);
 #endif
+  } /* end of n_eloads > 0*/
 
   fprintf(stderr,"End of input.\n");
 
@@ -860,7 +857,7 @@ void stiff()
     stiff_loc(type[i], E[i], A[i], I[i], (double)l) ;
 
     /* loads on elements: */
-    for (m=0; m<n_elems; m++)
+    for (m=0; m<n_eload; m++)
     {
       if ((l_e[m]-1) == i)
       {
@@ -1140,7 +1137,7 @@ int epos ;
   }
 
   /* primary forces: */
-  for (m=0; m<n_elems; m++)
+  for (m=0; m<n_eload; m++)
   {
     if ((l_e[m]-1) == epos)
     {
