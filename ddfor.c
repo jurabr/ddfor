@@ -108,14 +108,24 @@ FILE *fw ;
   }
 
   /* read coordinates of nodes */
+#ifdef UI
+  fprintf(stderr,"Coordinates of nodes (x y):\n");
+#endif
   for (i=0; i<n_nodes; i++)
   {
     fscanf(fw,"%e %e", &x_i[i], &y_i[i]) ;
   }
+#ifdef UI
+  fprintf(stderr,"  Have %d coordinates.\n",n_nodes);
+#else
   fprintf(stderr,"  Nodes:           %d\n",n_nodes);
+#endif
 
 
   /* number of elements */
+#ifdef UI
+  fprintf(stderr,"Number of elements:\n");
+#endif
   fscanf(fw,"%d", &n_elems);
   if (n_elems <= 0)
   {
@@ -169,14 +179,24 @@ FILE *fw ;
   }
 
   /* read element data */
+#ifdef UI
+  fprintf(stderr,"Element data (type node1 node2 E A I dens):\n");
+#endif
   for (i=0; i<n_elems; i++)
   {
     fscanf(fw,"%d %d %d %e %e %e %e",
       &type[i],&n1[i],&n2[i],&E[i],&A[i],&I[i],&rho[i]) ;
   }
+#ifdef UI
+  fprintf(stderr,"  Have %d elements.\n",n_elems);
+#else
   fprintf(stderr,"  Elements:        %d\n", n_elems);
+#endif
 
   /* supports */
+#ifdef UI
+  fprintf(stderr,"Number of supports:\n");
+#endif
   fscanf(fw,"%d", &n_disps);
   if (n_disps <= 0)
   {
@@ -207,14 +227,24 @@ FILE *fw ;
   }
   
   /* read supports data */
+#ifdef UI
+  fprintf(stderr,"Supports data (node direction size):\n");
+#endif
   for (i=0; i<n_disps; i++)
   {
     fscanf(fw,"%d %d %e",&d_n[i], &d_d[i], &d_v[i]) ;
   }
+#ifdef UI
+  fprintf(stderr,"  Have %d supports.\n",n_disps);
+#else
   fprintf(stderr,"  Supports:        %d\n",n_disps);
+#endif
 
 
   /* forces in nodes */
+#ifdef UI
+  fprintf(stderr,"Number of forces in nodes:\n");
+#endif
   fscanf(fw,"%d", &n_nfors);
   if (n_nfors <= 0)
   {
@@ -249,14 +279,24 @@ FILE *fw ;
   }
   
   /* read supports data */
+#ifdef UI
+  fprintf(stderr,"Forces in nodes data (node direction size):\n");
+#endif
   for (i=0; i<n_nfors; i++)
   {
     fscanf(fw,"%d %d %e",&f_n[i], &f_d[i], &f_v[i]) ;
   }
+#ifdef UI
+  fprintf(stderr,"  Have %d forces in nodes.\n",n_nfors);
+#else
   fprintf(stderr,"  Forces in nodes: %d\n",n_nfors);
+#endif
 
 
   /* loads on elements */
+#ifdef UI
+  fprintf(stderr,"Number of element loads:\n");
+#endif
   fscanf(fw,"%d", &n_eload);
   if (n_eload <= 0)
   {
@@ -305,11 +345,18 @@ FILE *fw ;
   }
   
   /* read element loads data */
+#ifdef UI
+  fprintf(stderr,"Element loads (element direction startsize endsize):\n");
+#endif
   for (i=0; i<n_eload; i++)
   {
     fscanf(fw,"%d %d %e %e",&l_e[i], &l_d[i], &l_v1[i], &l_v2[i]) ;
   }
+#ifdef UI
+  fprintf(stderr,"  Have %d element loads.\n",n_eload);
+#else
   fprintf(stderr,"  Element loads:   %d\n",n_eload);
+#endif
 
   fprintf(stderr,"End of input.\n");
 
@@ -1464,15 +1511,19 @@ char *argv[];
   FILE *fd = NULL ;
   FILE *fp = NULL ;
 
-  fprintf(stderr,"\nDDFOR 1.0.3: direct stiffness method solver for statics of 2D frames.\n");
+  fprintf(stderr,"\nDDFOR 1.0.4: direct stiffness method solver for statics of 2D frames.\n");
   fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
 
   if (argc < 2)
   {
-#ifdef LARGE
+#ifdef UI
     /* standard input */
     fprintf(stderr,"\nInteractive input:\n\n");
-    read_data(stdin);
+    if (read_data(stdin) != 0) 
+    {
+      fprintf(stderr,"\nProgram terminated!\n");
+      exit(-1);
+    }
 #else
     fprintf(stderr,"No input data file!\n");
     return(-1);
@@ -1488,8 +1539,15 @@ char *argv[];
     }
     else
     {
-      read_data(fw);
-      fclose(fw);
+      if (read_data(fw) != 0)
+      {
+        fprintf(stderr,"\nData input failed. Program terminated!\n");
+        exit(-1);
+      }
+      else
+      {
+        fclose(fw);
+      }
     }
   }
 

@@ -1,6 +1,5 @@
 CC=gcc
-#DEBUG=-O0 -Wall -pedantic -g -DLARGE
-DEBUG=-O3 -Wall -pedantic -DLARGE
+DEBUG=-O3 -Wall -pedantic -DLARGE -DUI
 CFLAGS=$(DEBUG)
 LIBS=-lm
 
