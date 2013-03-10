@@ -455,10 +455,9 @@ int main(int argc, char *argv[])
   set_minmax();
   plot_struct();
   /* TODO keyboard control of plotting will be here one day.. */
-  c = getchar();
   while ((c=getch()) == 27)
   {
-    switch c
+    switch(c)
     {
       case 'n': /* normal forces */ 
       case 'N': 
