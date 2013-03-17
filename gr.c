@@ -380,7 +380,7 @@ int main(int argc, char *argv[])
   FILE *fd = NULL ;
   int   c  = NULL ;
 
-  fprintf(stderr,"\nDDFOR/GFX 0.1: direct stiffness method solver for statics of 2D frames.\n");
+  fprintf(stderr,"\nDDFOR/GFX 0.2: direct stiffness method solver for statics of 2D frames.\n");
   fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
 
   /** normal program run: */
@@ -455,29 +455,36 @@ int main(int argc, char *argv[])
   set_minmax();
   plot_struct();
   /* TODO keyboard control of plotting will be here one day.. */
-  while ((c=getch()) == 27)
+  while ((c=getch()) != 27)
   {
     switch(c)
     {
-      case 'n': /* normal forces */ 
-      case 'N': 
-      case 'a': 
-      case 'A':
+      case  78: /* normal forces */ 
+      case 110: 
+      case  97: 
+      case  65:
+        clrscrn2(0);
+        gfx_plot_results(0); 
         gfx_plot_results(1); 
         break ;
-      case 'v': /* shear forces */ 
-      case 'V':
+      case 118: /* shear forces */ 
+      case  86:
+        clrscrn2(0);
+        gfx_plot_results(0); 
         gfx_plot_results(2); 
         break ; 
-      case 'm': /* bending moments */ 
-      case 'M':
+      case  77: /* bending moments */ 
+      case 109:
+        clrscrn2(0);
+        gfx_plot_results(0); 
         gfx_plot_results(3);
         break ;
-      case 'i': /* structure */
-      case 'I':
-      case 's':
-      case 'S':
+      case 105: /* structure */
+      case  73:
+      case  83:
+      case 115:
       default: 
+        clrscrn2(0);
         gfx_plot_results(0); 
         break ; 
     }
