@@ -68,6 +68,7 @@ double g_dx = 0.0 ;
 double g_dy = 0.0 ;
 double gmul = 1.0 ;
 double gsiz = 0.0 ;
+double grat = 1.0 ; /* g_x/g_y ratio */
 
 /** Reading of data from file */
 extern int read_data(FILE *fw);
@@ -151,6 +152,7 @@ void gr_init(void)
   imaxx  = 320 ; 
   imaxy  = 200 ;
   gr_size= 3   ;
+  grat = (double)imaxx / (double)imaxy ;
 }
 
 /** restore text mode */
@@ -194,8 +196,10 @@ void set_minmax(void)
   if (mulx < muly) { gmul = mulx ; } /* gfx multiplier */
   else             { gmul = muly ; }
 
-  if (lx > ly) { gsiz = lx ; } /* size of structure */
+  if (lx > ly) { gsiz = lx ; } /* size of structure */ 
   else         { gsiz = ly ; }
+  
+  /* TODO: adjust position if lx or ly is very small */
 }
 
 /** Computation of screen coordinates */
@@ -229,7 +233,7 @@ void plot_disp(int node, int type, double val, int size)
   }
 }
 
-/** plots forces  */
+/** plots one force  */
 void plot_force(int node, int type, double val, int size)
 {
   int x,y;
@@ -239,7 +243,8 @@ void plot_force(int node, int type, double val, int size)
 
   switch (type)
   {
-    case 1: if (val > 0.0)
+    case 1: /* horizontal force */
+            if (val > 0.0)
             {
               move_to(x+4*size, y);
               line_to(x,y);
@@ -256,7 +261,7 @@ void plot_force(int node, int type, double val, int size)
               line_to(x, y);
             }
             break ;
-    case 2: /* TODO */
+    case 2: /* vertical force */
             if (val > 0.0)
             {
               move_to(x, y+4*size);
@@ -274,8 +279,46 @@ void plot_force(int node, int type, double val, int size)
               line_to(x, y);
             }
             break ;
-    case 3: /* TODO */
+    case 3: /* bending moment */
+            if (val > 0.0)
+            {
+              move_to(x-2*size, y);
+              line_to(x-2*size, y-2*size);
+              line_to(x-1*size, y-3*size);
+              line_to(x+1*size, y-3*size);
+              line_to(x+2*size, y-2*size);
+              line_to(x+2*size, y);
+              move_to(x+1*size, y-size);
+              line_to(x+2*size, y);
+              line_to(x+3*size, y-size);
+            }
+            else
+            {
+              move_to(x+2*size, y);
+              line_to(x+2*size, y-2*size);
+              line_to(x+1*size, y-3*size);
+              line_to(x-1*size, y-3*size);
+              line_to(x-2*size, y-2*size);
+              line_to(x-2*size, y);
+              move_to(x-1*size, y-size);
+              line_to(x-2*size, y);
+              line_to(x-3*size, y-size);
+            }
             break ;
+  }
+}
+
+/* plot one element load */
+void plot_eload (int elem, int type, double v1, double v2, int size)
+{
+  switch(type)
+  {
+    case 1: /* TODO  local x */ break ;
+    case 2: /* TODO  local y */
+      break ;
+    case 3: /* TODO  global x */ break ;
+    case 4: /* TODO  global y */ break ;
+    default: break ;
   }
 }
 
@@ -378,9 +421,9 @@ int main(int argc, char *argv[])
   FILE *fw = NULL ;
   FILE *fo = NULL ;
   FILE *fd = NULL ;
-  int   c  = NULL ;
+  int   c  = 0 ;
 
-  fprintf(stderr,"\nDDFOR/GFX 0.2: direct stiffness method solver for statics of 2D frames.\n");
+  fprintf(stderr,"\nDDFOR/GFX 0.2.1: direct stiffness method solver for statics of 2D frames.\n");
   fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
 
   /** normal program run: */
@@ -454,9 +497,10 @@ int main(int argc, char *argv[])
   gr_init();
   set_minmax();
   plot_struct();
-  /* TODO keyboard control of plotting will be here one day.. */
-  while ((c=getch()) != 27)
+  /* keyboard control loop for gfx: */
+  while (c != 27)
   {
+    c = getch();
     switch(c)
     {
       case  78: /* normal forces */ 
@@ -479,6 +523,9 @@ int main(int argc, char *argv[])
         gfx_plot_results(0); 
         gfx_plot_results(3);
         break ;
+      case 113: /* quit */
+      case  27:
+      case  87: c = 27 ; break ;
       case 105: /* structure */
       case  73:
       case  83:
