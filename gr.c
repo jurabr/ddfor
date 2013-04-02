@@ -69,6 +69,8 @@ double g_dy = 0.0 ;
 double gmul = 1.0 ;
 double gsiz = 0.0 ;
 double grat = 1.0 ; /* g_x/g_y ratio */
+double zoom = 1.0 ; /* zoom          */
+double fmax = 1.0 ; /* max. size of loads */
 
 /** Reading of data from file */
 extern int read_data(FILE *fw);
@@ -143,6 +145,27 @@ extern int beam_max(int type, int epos, int div, double *nmax, double *npos, dou
  *  This routine is meant for plotting tools */
 extern void in_gfx(int type, int epos, int div, int ppos, double mult, double *vx, double *vy);
 
+void plint(int num)
+{
+  char s[10] ;
+  int  i ;
+
+  if (num > 9e9) return;
+  for (i=0; i<10; i++) s[i]='\0';
+  sprintf(s,"%i",num);
+  plots(s);
+}
+
+void pldbl(double num)
+{
+  char s[10] ;
+  int  i ;
+
+  if (abs(num) > 9e7) return;
+  for (i=0; i<10; i++) s[i]='\0';
+  sprintf(s,"%.0f",num);
+  plots(s);
+}
 
 /* sets GFX mode */
 void gr_init(void)
@@ -168,6 +191,8 @@ void set_minmax(void)
   double minx, maxx, miny, maxy ;
   double lx, ly, mulx, muly, ix, iy ;
   int i ;
+  int cent = 0 ;
+  double cmul = 0.0 ;
 
   maxx = x_i[0]; maxy = y_i[0];
   minx = x_i[0]; miny = y_i[0];
@@ -190,6 +215,19 @@ void set_minmax(void)
   if (lx > 0.0) { mulx = ix/lx; }
   if (ly > 0.0) { muly = iy/ly; }
   
+  if (muly<=0.3*mulx) 
+  {
+    cent=2;
+    if (muly!=0.0) cmul=0.8*mulx/muly;
+    else cmul=0.3;
+  }
+  if (mulx<=0.3*muly)
+  {
+    cent=1;
+    if (mulx!=0.0) cmul=0.8*muly/mulx;
+    else cmul=0.3;
+  }
+
   if (muly == 0.0) muly = mulx ;
   if (mulx == 0.0) mulx = muly ;
 
@@ -199,12 +237,17 @@ void set_minmax(void)
   if (lx > ly) { gsiz = lx ; } /* size of structure */ 
   else         { gsiz = ly ; }
   
-  /* TODO: adjust position if lx or ly is very small */
+  /* adjust position if lx or ly is very small */
+  switch(cent)
+  {
+    case 1: g_dx += (cmul*gsiz) ; break ;
+    case 2: g_dy -= (cmul*gsiz) ; break ;
+  }
 }
 
 /** Computation of screen coordinates */
-int x_pos(double x) { return((int)((x - g_dx)*gmul))+okraj; }
-int y_pos(double y) { return(imaxy - ((int)((y - g_dy)*gmul))-okraj); }
+int x_pos(double x) { return((int)((x - g_dx)*gmul*zoom))+okraj; }
+int y_pos(double y) { return(imaxy - ((int)((y - g_dy)*gmul*zoom))-okraj); }
 
 /** plots supports */
 void plot_disp(int node, int type, double val, int size)
@@ -251,6 +294,9 @@ void plot_force(int node, int type, double val, int size)
               line_to(x+size, y-size);
               move_to(x+size, y+size);
               line_to(x, y);
+
+              move_to(x+2*size, y-2*size);
+              pldbl(val);
             }
             else
             {
@@ -259,6 +305,9 @@ void plot_force(int node, int type, double val, int size)
               line_to(x-size, y-size);
               move_to(x-size, y+size);
               line_to(x, y);
+
+              move_to(x-4*size, y-2*size);
+              pldbl(val);
             }
             break ;
     case 2: /* vertical force */
@@ -269,6 +318,9 @@ void plot_force(int node, int type, double val, int size)
               line_to(x-size, y+size);
               move_to(x+size, y+size);
               line_to(x, y);
+
+              move_to(x, y+4*size);
+              pldbl(val);
             }
             else
             {
@@ -277,6 +329,9 @@ void plot_force(int node, int type, double val, int size)
               line_to(x-size, y-size);
               move_to(x+size, y-size);
               line_to(x, y);
+
+              move_to(x, y-5*size);
+              pldbl(val);
             }
             break ;
     case 3: /* bending moment */
@@ -291,6 +346,9 @@ void plot_force(int node, int type, double val, int size)
               move_to(x+1*size, y-size);
               line_to(x+2*size, y);
               line_to(x+3*size, y-size);
+
+              move_to(x-size, y-4*size);
+              pldbl(val);
             }
             else
             {
@@ -303,18 +361,63 @@ void plot_force(int node, int type, double val, int size)
               move_to(x-1*size, y-size);
               line_to(x-2*size, y);
               line_to(x-3*size, y-size);
+
+              move_to(x-size, y-5*size);
+              pldbl(val);
             }
             break ;
   }
 }
 
-/* plot one element load */
+/** plot one element load */
 void plot_eload (int elem, int type, double v1, double v2, int size)
 {
+  int x[5] ;
+  int y[5] ;
+  double a,c,s, dx, dy, L ;
+  int i ;
+
+  x[1] = x_pos(x_i[n1[elem]-1]) ;
+  y[1] = y_pos(y_i[n1[elem]-1]) ;
+  x[2] = x_pos(x_i[n2[elem]-1]) ;
+  y[2] = y_pos(y_i[n2[elem]-1]) ;
+  dx = (double)(x[2] - x[1]) ;
+  dy = (double)(y[2] - y[1]) ;
+  L = sqrt(dx*dx + dy*dy);
+  if (dy != 0.0)
+  {
+    a = asin(dy/L) + (3.14/2.0) ;
+    s = sin(a) ;
+    c = cos(a) ;
+  }
+  else
+  {
+    if (dx > 0) { s = 1.0 ; c = 0.0 ; }
+    else        { s = -1.0 ; c = 0.0 ; }
+  }
+
+  x[3] = x[1] + (int)((double)size*(v1/fmax) * c) ;
+  y[3] = y[1] + (int)((double)size*(-v1/fmax) * s) ;
+  x[4] = x[2] + (int)((double)size*(v2/fmax) * c) ;
+  y[4] = y[2] + (int)((double)size*(-v2/fmax) * s) ;
+
+  move_to(x[1],y[1]);
+  line_to(x[3],y[3]);
+  line_to(x[4],y[4]);
+  line_to(x[2],y[2]);
+/*fprintf(stderr," %i %i %i %i\n %i %i, %i,%i\n",x[1],y[1],x[2],y[2],x[3],y[3],x[4],y[4]);*/
+
   switch(type)
   {
-    case 1: /* TODO  local x */ break ;
+    case 1: /* TODO  local x */ 
+      break ;
     case 2: /* TODO  local y */
+        for (i=1; i<5; i++)
+        {
+          a =  (double)i/4.0 ;
+          move_to(a*(x[4]-x[3])+x[3], a*(y[4]-y[3])+y[3]);
+          line_to(a*(x[2]-x[1])+x[1], a*(y[2]-y[1])+y[1]);
+        }
       break ;
     case 3: /* TODO  global x */ break ;
     case 4: /* TODO  global y */ break ;
@@ -344,13 +447,23 @@ void plot_forces(void)
   double mult ;
 
   /* multiplier for forces: */
+  fmax = 0 ;
   for (i=0; i<n_nfors; i++)
-    { if (abs(f_v[i]) > mult) {mult = abs(f_v[i]);} }
-  if (mult > 1e-8){mult = (double)okraj/mult ;}
+    { if (abs(f_v[i]) > fmax) {fmax = abs(f_v[i]);} }
+  for (i=0; i<n_eload; i++)
+  { 
+    if (abs(l_v1[i]) > fmax) {fmax = abs(l_v1[i]);} 
+    if (abs(l_v2[i]) > fmax) {fmax = abs(l_v2[i]);} 
+  }
+  if (fmax > 1e-8){mult = (double)okraj/fmax ;}
 
   for (i=0; i<n_nfors; i++)
   {
     plot_force(f_n[i], f_d[i], f_v[i], (int)(okraj/2)) ;
+  }
+  for (i=0; i<n_eload; i++)
+  {
+    plot_eload(l_e[i]-1, l_d[i], l_v1[i], l_v2[i], (int) okraj/2) ;
   }
 }
 
@@ -374,6 +487,36 @@ void plot_struct(void)
 
   /* forces */
   plot_forces();
+}
+
+/** plot element (with numbers) */
+void gfx_plot_elements(void)
+{
+  int i ;
+
+  for (i=0; i<n_elems; i++)
+  {
+    move_to(x_pos(x_i[n1[i]-1]), y_pos(y_i[n1[i]-1]));
+    line_to(x_pos(x_i[n2[i]-1]), y_pos(y_i[n2[i]-1]));
+
+    move_to(x_pos(0.5*(x_i[n1[i]-1]+x_i[n2[i]-1])), 
+            y_pos(0.5*(y_i[n1[i]-1]+y_i[n2[i]-1]))-gr_size);
+    plint(i+1);
+  }
+}
+
+/** plot nodes (with numbers) */
+void gfx_plot_nodes(void)
+{
+  int i,j ;
+
+  /* nodes: */
+  for (i=0; i<n_nodes; i++) 
+  { 
+    plot_node(x_i[i],y_i[i]); 
+    move_to(x_pos(x_i[i])+gr_size,y_pos(y_i[i])-gr_size);
+    plint(i+1);
+  }
 }
 
 /** prints internal forces in elements gfx-friendly form */
@@ -423,7 +566,7 @@ int main(int argc, char *argv[])
   FILE *fd = NULL ;
   int   c  = 0 ;
 
-  fprintf(stderr,"\nDDFOR/GFX 0.2.1: direct stiffness method solver for statics of 2D frames.\n");
+  fprintf(stderr,"\nDDFOR/GFX 0.2.3: direct stiffness method solver for statics of 2D frames.\n");
   fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
 
   /** normal program run: */
@@ -503,9 +646,22 @@ int main(int argc, char *argv[])
     c = getch();
     switch(c)
     {
-      case  78: /* normal forces */ 
+      case 43: /* zoom += */
+      case 61: 
+        zoom += 0.1 ; if (zoom>10) zoom = 10 ;
+        clrscrn2(0);
+        plot_struct(); 
+        break ;
+      case 45: /* zoom -  */
+        zoom -= 0.1 ; if (zoom<=0.0) zoom = 0.1 ;
+        clrscrn2(0);
+        plot_struct(); 
+        break ;
       case 110: 
-      case  97: 
+      case  78:
+        gfx_plot_nodes(); 
+        break;
+      case  97: /* normal forces */  
       case  65:
         clrscrn2(0);
         gfx_plot_results(0); 
@@ -523,11 +679,18 @@ int main(int argc, char *argv[])
         gfx_plot_results(0); 
         gfx_plot_results(3);
         break ;
+      case 101:/* elements */
+      case  69:
+        gfx_plot_elements();
+        break ;
       case 113: /* quit */
       case  27:
       case  87: c = 27 ; break ;
       case 105: /* structure */
       case  73:
+        clrscrn2(0);
+        plot_struct(); 
+        break ; 
       case  83:
       case 115:
       default: 
