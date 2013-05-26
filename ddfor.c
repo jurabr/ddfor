@@ -1363,24 +1363,10 @@ double *vy;
   switch (type)
   {
     case 0 : /* already computed */ break;
-    case 1 : get_eloads(epos, 1, &na, &nb);
-             no = na ; nt = nb - no ;
-             Xo = lenx*no + 0.5*lenx*((nt*lenx/L)) ;
-             val = (Xo - (Na) ) ;
+    case 1 : 
+    case 2 : val = in_force(type, epos, div, ppos);
              break ;
-    case 2 : get_eloads(epos, 2, &na, &nb);
-             no = na ; nt = nb - no ;
-
-             Xo = (no*L)/2 - (no*lenx) 
-               + ((nt*L)/6 - ((nt*lenx*lenx)/(2*L)) ) ;
-             val = (Xo  - ((Mb + Ma)/L)  ) ;
-             break ;
-    case 3 : get_eloads(epos, 2, &na, &nb);
-             no = na ; nt = nb - no ;
-
-             Xo =  (no*L*lenx)/2 - (no*lenx*lenx)/2 
-                  + ((nt*L*lenx)/6.0 - (nt*lenx*lenx*lenx)/(6*L) ) ;
-             val = ((-1.0)*(Xo + ((-Ma*lenxx+Mb*lenx)/L)  ) ) ;
+    case 3 : val = (-1.0)*in_force(type, epos, div, ppos);
              break ;
   }
 

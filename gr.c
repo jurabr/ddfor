@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <graphics.h>
 #include <bios.h>
+#include <math.h>
 
 /** External stuff for ddfor.c: */
 extern int    n_nodes ;
@@ -71,6 +72,7 @@ double gsiz = 0.0 ;
 double grat = 1.0 ; /* g_x/g_y ratio */
 double zoom = 1.0 ; /* zoom          */
 double fmax = 1.0 ; /* max. size of loads */
+double efmax = 1.0 ; /* max. size of loads */
 
 /** Reading of data from file */
 extern int read_data(FILE *fw);
@@ -240,13 +242,13 @@ void set_minmax(void)
   /* adjust position if lx or ly is very small */
   switch(cent)
   {
-    case 1: g_dx += (cmul*gsiz) ; break ;
+    case 1: g_dx -= (cmul*gsiz) ; break ;
     case 2: g_dy -= (cmul*gsiz) ; break ;
   }
 }
 
 /** Computation of screen coordinates */
-int x_pos(double x) { return((int)((x - g_dx)*gmul*zoom))+okraj; }
+int x_pos(double x) { return((int)((x + g_dx)*gmul*zoom))+okraj; }
 int y_pos(double y) { return(imaxy - ((int)((y - g_dy)*gmul*zoom))-okraj); }
 
 /** plots supports */
@@ -277,9 +279,13 @@ void plot_disp(int node, int type, double val, int size)
 }
 
 /** plots one force  */
-void plot_force(int node, int type, double val, int size)
+void plot_force(int node, int type, double val, int size0)
 {
   int x,y;
+  int size = 10 ;
+
+  size = (int)(abs((val)/fmax) * (double)size0) ;
+  if (size < 6) {size = 6;}
 
   x = x_pos(x_i[node-1]);
   y = y_pos(y_i[node-1]);
@@ -368,55 +374,45 @@ void plot_force(int node, int type, double val, int size)
             break ;
   }
 }
-
 /** plot one element load */
 void plot_eload (int elem, int type, double v1, double v2, int size)
 {
-  int x[5] ;
-  int y[5] ;
-  double a,c,s, dx, dy, L ;
+  double x1,x2,y1,y2,c,s ;
+  double L, lenx, vx, vy, vx0, vy0 ;
+  double val = 0.0 ;
+  double mult = 5.0 ;
+  int div = 10 ;
   int i ;
 
-  x[1] = x_pos(x_i[n1[elem]-1]) ;
-  y[1] = y_pos(y_i[n1[elem]-1]) ;
-  x[2] = x_pos(x_i[n2[elem]-1]) ;
-  y[2] = y_pos(y_i[n2[elem]-1]) ;
-  dx = (double)(x[2] - x[1]) ;
-  dy = (double)(y[2] - y[1]) ;
-  L = sqrt(dx*dx + dy*dy);
-  if (dy != 0.0)
-  {
-    a = asin(dy/L) + (3.14/2.0) ;
-    s = sin(a) ;
-    c = cos(a) ;
-  }
-  else
-  {
-    if (dx > 0) { s = 1.0 ; c = 0.0 ; }
-    else        { s = -1.0 ; c = 0.0 ; }
-  }
+  x1 = (double)x_pos(x_i[n1[elem]-1]) ;
+  y1 = (double)y_pos(y_i[n1[elem]-1]) ;
+  x2 = (double)x_pos(x_i[n2[elem]-1]) ;
+  y2 = (double)y_pos(y_i[n2[elem]-1]) ;
 
-  x[3] = x[1] + (int)((double)size*(v1/fmax) * c) ;
-  y[3] = y[1] + (int)((double)size*(-v1/fmax) * s) ;
-  x[4] = x[2] + (int)((double)size*(v2/fmax) * c) ;
-  y[4] = y[2] + (int)((double)size*(-v2/fmax) * s) ;
-
-  move_to(x[1],y[1]);
-  line_to(x[3],y[3]);
-  line_to(x[4],y[4]);
-  line_to(x[2],y[2]);
-/*fprintf(stderr," %i %i %i %i\n %i %i, %i,%i\n",x[1],y[1],x[2],y[2],x[3],y[3],x[4],y[4]);*/
+  L = sqrt ( ((y2-y1)*(y2-y1)) + ((x2-x1)*(x2-x1)) ) ;
+  s = (y2-y1)/L ;
+  c = (x2-x1)/L ;
 
   switch(type)
   {
     case 1: /* TODO  local x */ 
       break ;
     case 2: /* TODO  local y */
-        for (i=1; i<5; i++)
+        move_to(x1,y1);
+        for (i=0; i<=div; i++)
         {
-          a =  (double)i/4.0 ;
-          move_to(a*(x[4]-x[3])+x[3], a*(y[4]-y[3])+y[3]);
-          line_to(a*(x[2]-x[1])+x[1], a*(y[2]-y[1])+y[1]);
+          lenx  = L*((double)((double)i/(double)(div))) ;
+
+          vx0 = x1 + lenx*c ;
+          vy0 = y1 + lenx*s ;
+
+          val =  v1+(v2-v1)*((double)((double)i/(double)(div))) ;
+          mult = (val/efmax)*(double)size ;
+          vx = vx0 - mult*s ;
+          vy = vy0 - mult*c ;
+          line_to((int)vx,(int)vy);
+          line_to((int)vx0,(int)vy0);
+          move_to((int)vx,(int)vy);
         }
       break ;
     case 3: /* TODO  global x */ break ;
@@ -444,26 +440,26 @@ void plot_node(double x_i, double y_i)
 void plot_forces(void)
 {
   int i ;
-  double mult ;
 
   /* multiplier for forces: */
   fmax = 0 ;
+  efmax = 0 ;
   for (i=0; i<n_nfors; i++)
     { if (abs(f_v[i]) > fmax) {fmax = abs(f_v[i]);} }
   for (i=0; i<n_eload; i++)
   { 
-    if (abs(l_v1[i]) > fmax) {fmax = abs(l_v1[i]);} 
-    if (abs(l_v2[i]) > fmax) {fmax = abs(l_v2[i]);} 
+    if (abs(l_v1[i]) > efmax) {efmax = abs(l_v1[i]);} 
+    if (abs(l_v2[i]) > efmax) {efmax = abs(l_v2[i]);} 
   }
-  if (fmax > 1e-8){mult = (double)okraj/fmax ;}
 
   for (i=0; i<n_nfors; i++)
   {
-    plot_force(f_n[i], f_d[i], f_v[i], (int)(okraj/2)) ;
+    if (f_v[i] != 0.0) plot_force(f_n[i], f_d[i], f_v[i], (int)(0.5*okraj)) ;
   }
   for (i=0; i<n_eload; i++)
   {
-    plot_eload(l_e[i]-1, l_d[i], l_v1[i], l_v2[i], (int) okraj/2) ;
+    if ((l_v1[i] != 0.0) || (l_v2[i] != 0.0))
+      plot_eload(l_e[i]-1, l_d[i], l_v1[i], l_v2[i], (int)(0.5*okraj)) ;
   }
 }
 
@@ -527,6 +523,7 @@ void gfx_plot_results(int type)
   double x,y, mx,my ;
   double mult = 0.0;
   double dmult = 0.0;
+  double fmult = 0.0;
 
   /* multiplier for deformations */
   dmult = abs(u_val[0]) ;
@@ -534,9 +531,23 @@ void gfx_plot_results(int type)
     { if (dmult < abs(u_val[i])) { dmult = abs(u_val[i]); } }
   if (dmult > 1e-6) { dmult = 0.3 * (gsiz/dmult) ;  } 
 
-  mult = 0.3*dmult ; /* TODO: replace with proper code */
+  mx = 0.0 ;
+  for (i=0; i<n_elems; i++) /* compute result multiplier */
+  {
+    res_loc(i);
+    for (j=0; j<=div; j++)
+    {
+      mx = abs(in_force(type, i, div, j));
+      if (mx > fmult) { fmult = mx ; }
+    }
+  }
+  if (fmult != 0.0) 
+  { 
+    mult = ((double)okraj/(double)imaxx)*(1.0/grat)*0.9*(gsiz/fmult); 
+  }
+  else { mult = 0.0 ; }
 
-  for (i=0; i<n_elems; i++)
+  for (i=0; i<n_elems; i++) /* plot results */
   {
     res_loc(i);
     for (j=0; j<=div; j++)
@@ -562,11 +573,9 @@ void gfx_plot_results(int type)
 int main(int argc, char *argv[])
 {
   FILE *fw = NULL ;
-  FILE *fo = NULL ;
-  FILE *fd = NULL ;
   int   c  = 0 ;
 
-  fprintf(stderr,"\nDDFOR/GFX 0.2.3: direct stiffness method solver for statics of 2D frames.\n");
+  fprintf(stderr,"\nDDFOR/GFX 0.2.4: direct stiffness method solver for statics of 2D frames.\n");
   fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
 
   /** normal program run: */
@@ -590,36 +599,6 @@ int main(int argc, char *argv[])
     }
   }
 
-  if (argc < 3)
-  {
-    /* standard output */
-    fo = stdout;
-  }
-  else
-  {
-    /* write to file */
-    if ((fo=fopen(argv[2],"w")) == NULL)
-    {
-      fprintf(stderr,"Failed to open output file!\n");
-      fo = stdout ;
-    }
-  }
-
-  if (argc < 4)
-  {
-    /* no output */
-    fd = NULL;
-  }
-  else
-  {
-    /* write to file */
-    if ((fd=fopen(argv[3],"w")) == NULL)
-    {
-      fprintf(stderr,"Failed to open output file!\n");
-      fd = NULL ;
-    }
-  }
-
   if  (alloc_kf() != 0 )
   {
     free_data();
@@ -632,9 +611,6 @@ int main(int argc, char *argv[])
   fprintf(stderr,"\nSolution: \n");
   solve_eqs();
   fprintf(stderr,"End of solution. \n");
-
-  if (fo != NULL) { results(fo); fclose(fo); }
-  if (fd != NULL) { eint_results(fd); fclose(fd); }
 
   /** Graphics: */
   gr_init();
