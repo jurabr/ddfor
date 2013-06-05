@@ -1034,10 +1034,47 @@ double *nb;
   }
 }
 
+/* element deformation computation:  */
+double in_def(e_type, L, q1, q2, x)
+int e_type;
+double L;
+double q1;
+double q2;
+double x;
+{
+  double y = 0.0 ;
+  double xx;
+  double qa, qb ;
+
+  if (q1 == q2) { qa = q1 ; qb = 0.0 ; }
+  else          { qa = q1 ; qb = q2 - q1 ; }
+
+  switch(e_type)
+  {
+    case 0: /* |-| */
+            y  = (qa*x*x*x*x)/24 - (qa*L*x*x*x)/12 + (qa*L*L*x*x)/24 ;
+            y += ((qb*x*x)/(120*L))*(x*x*x - 3*L*L*x + 2*L*L*L) ;
+            break;
+    case 1: /* o-| */ 
+            y  = (qa*x*x*x*x)/2 - (3*qa*L*x*x*x)/48 + (qa*L*L*L*x)/8 ;
+            y += (qb*x*x*x*x)/24 - (3*qb*L*x*x*x)/48 + (qb*L*L*L*x)/48 ;
+            break;
+    case 2: /* |-o */ 
+            y  = (qa*x*x*x*x)/2 - (3*qa*L*x*x*x)/48 + (qa*L*L*L*x)/8 ;
+            xx = L-x ;
+            y += (qb*xx*xx*xx*xx)/24 - (3*qb*L*xx*xx*xx)/48 + (qb*L*L*L*xx)/48 ;
+            break;
+    case 3: /* o-o */ 
+            y  = (qa*x*x*x*x)/24 - (qa*L*x*x)/12 + (qa*L*L*L*x)/24 ;
+            y += (qb*x*x*x*x*x)/(120*L) - (qb*L*x*x*x)/36 + (7/360)*qb*L*L*L*x ;
+            break;
+  }
+  return((-1.0)*y);
+}
 
 /** Compute internal force (N, V, M) for given point of beam */
-double in_force(type, epos, div, ppos)
-int type; /* force type: 1=N, 2=V, 3=M */
+double in_force(ftyp, epos, div, ppos)
+int ftyp; /* force type: 1=N, 2=V, 3=M, 4=w */
 int epos; /* element position */
 int div;  /* number of divisions */
 int ppos; /* number of computed point (0...div)*/
@@ -1063,7 +1100,7 @@ int ppos; /* number of computed point (0...div)*/
   lenx  = L*((double)((double)ppos/(double)(div))) ;
   lenxx = L - lenx ;
 
-  switch (type)
+  switch (ftyp)
   {
     case 0 : return(lenx); break;
     case 1 : get_eloads(epos, 1, &na, &nb);
@@ -1084,6 +1121,9 @@ int ppos; /* number of computed point (0...div)*/
              Xo =  (no*L*lenx)/2 - (no*lenx*lenx)/2 
                   + ((nt*L*lenx)/6.0 - (nt*lenx*lenx*lenx)/(6*L) ) ;
              return ((1.0)*(Xo + ((-Ma*lenxx+Mb*lenx)/L)  ) ) ;
+             break ;
+    case 4 : get_eloads(epos, 2, &na, &nb);
+             return(in_def(type[epos], L, na, nb, lenx));
              break ;
   }
 
@@ -1323,7 +1363,7 @@ FILE *fw;
 /** Compute internal force (N, V, M) for given point of beam
  *  This routine is meant for plotting tools */
 void in_gfx(type, epos, div, ppos, mult, vx, vy)
-int type; /* force type: 1=N, 2=V, 3=M */
+int type; /* force type: 1=N, 2=V, 3=M, 4=w */
 int epos; /* element position */
 int div;  /* number of divisions */
 int ppos; /* number of computed point (0...div)*/
@@ -1364,7 +1404,8 @@ double *vy;
   {
     case 0 : /* already computed */ break;
     case 1 : 
-    case 2 : val = in_force(type, epos, div, ppos);
+    case 2 :
+    case 4 : val = in_force(type, epos, div, ppos);
              break ;
     case 3 : val = (-1.0)*in_force(type, epos, div, ppos);
              break ;

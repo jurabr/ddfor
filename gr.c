@@ -522,14 +522,16 @@ void gfx_plot_results(int type)
   int div = 10 ;
   double x,y, mx,my ;
   double mult = 0.0;
-  double dmult = 0.0;
   double fmult = 0.0;
+#if 0
+  double dmult = 0.0;
 
   /* multiplier for deformations */
   dmult = abs(u_val[0]) ;
   for (i=1; i<K_len; i++)
     { if (dmult < abs(u_val[i])) { dmult = abs(u_val[i]); } }
   if (dmult > 1e-6) { dmult = 0.3 * (gsiz/dmult) ;  } 
+#endif
 
   mx = 0.0 ;
   for (i=0; i<n_elems; i++) /* compute result multiplier */
@@ -562,7 +564,8 @@ void gfx_plot_results(int type)
       else
       {
         line_to(x_pos(mx), y_pos(my)); 
-        line_to(x_pos(x), y_pos(y));   /* these 2 lines are for filling */
+        if (type != 4) {
+        line_to(x_pos(x), y_pos(y));}   /* these 2 lines are for filling */
         move_to(x_pos(mx), y_pos(my)); 
       }
     }
@@ -655,13 +658,19 @@ int main(int argc, char *argv[])
         gfx_plot_results(0); 
         gfx_plot_results(3);
         break ;
+      case 119: /* deformations */
+      case  87:
+        clrscrn2(0);
+        /*gfx_plot_results(0); */
+        gfx_plot_results(4);
+        break ;
       case 101:/* elements */
       case  69:
         gfx_plot_elements();
         break ;
       case 113: /* quit */
       case  27:
-      case  87: c = 27 ; break ;
+        c = 27 ; break ;
       case 105: /* structure */
       case  73:
         clrscrn2(0);
