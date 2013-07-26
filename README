@@ -36,6 +36,10 @@ The "plotfile" can be used to save data in Gnuplot-compatible form. The 2nd
 and 3rd columns cover X and Y coordinates, the 4th and 5th are for  N, the 6th
 and 7th are for V and the 8th and 9th are for M internal forces.
 
+If name of any of the output files starts with the "0" or the "-" characters
+the this file is not written.
+
+
 Conventions
 -----------
 

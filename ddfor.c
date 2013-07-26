@@ -1528,13 +1528,21 @@ double *mpos; /* position of max M absolute from 1st node */
 void pseudo_geom(fw)
 FILE *fw;
 {
-  int size_x = 40 ; /* x console size (width)  */
-  int size_y = 8 ; /*  y console size (height) */
+  int size_x = 78 ; /* x console size (width)  */
+  int size_y = 24 ; /*  y console size (height) */
   double  mult_x, mult_y ;
   double max_x, min_x, max_y, min_y ;
-  char **fld = NULL;
+  double x_e, y_e, dx, dy ;
+  char   **fld = NULL;
+  char   symbol;
+  char   str[5];
   int i, j;
   int ii, jj;
+  int is, ilen ;
+
+#ifdef POFO
+  size_x = 39 ; size_y = 8 ; /* atari portfolio screen */
+#endif
 
   /* allocate image buffer: */
   if ((fld = (char **)malloc (size_y*sizeof(char *))) == NULL) return;
@@ -1561,25 +1569,70 @@ FILE *fw;
 
   /* compute multipliers for translation to screen size: */
   if (fabs(max_x-min_x) > 0)
-  {mult_x = (double)(size_x-2) /  (max_x - min_x) ;}
+  {mult_x = (double)(size_x-3) /  (max_x - min_x) ;}
   else { mult_x = 1 ; }
 
   if (fabs(max_y-min_y) > 0)
-  { mult_y = (double)(size_y-2) /  (max_y - min_y) ; }
+  { mult_y = (double)(size_y-3) /  (max_y - min_y) ; }
   else { mult_y = 1 ; }
+
+  /* plot element numbers */
+  for (i=0; i<n_elems; i++)
+  {
+    /* dx and dy computation */
+    x_e =  (x_i[n2[i]-1] - x_i[n1[i]-1]) ;
+    y_e =  (y_i[n2[i]-1] - y_i[n1[i]-1]) ;
+    symbol = '*';
+    if (fabs(x_e) < 1e-6) symbol = '|' ;
+    if (fabs(y_e) < 1e-6) symbol = '-' ;
+    if (symbol == '*')
+    {
+      if ((y_e*x_e) > 0.0) symbol = '/' ;
+      else                 symbol ='\\';
+    }
+    /* gfx lenght of element */
+    ii =  (int)(fabs(x_e) * mult_x) + 1  ;
+    jj =  (int)(fabs(y_e) * mult_y) + 1 ;
+    ilen = (int)(sqrt(pow((float)ii,2) + pow((float)jj,2))) ;
+    dx = x_e ; dy = y_e ;
+    for (is=1; is<ilen; is++)
+    {
+      x_e = ((float)is/(float)ilen)*dx + x_i[n1[i]-1] ;
+      y_e = ((float)is/(float)ilen)*dy + y_i[n1[i]-1] ;
+      ii =  (int)((x_e-min_x) * mult_x) + 1  ;
+      jj = size_y - ( (int)((y_e-min_y) * mult_y) + 1 ) ;
+      fld[jj][ii] = symbol ;
+    }
+
+    /* element numbers code */
+    x_e = 0.5 * (x_i[n2[i]-1] + x_i[n1[i]-1]) ;
+    y_e = 0.5 * (y_i[n2[i]-1] + y_i[n1[i]-1]) ;
+    ii =  (int)((x_e-min_x) * mult_x) + 1  ;
+    jj = size_y - ( (int)((y_e-min_y) * mult_y) + 1 ) ;
+  
+    for (is=0; is<5; is++) { str[is] = '\0'; }
+    sprintf(str,"%d",i+1);
+    fld[jj][ii] = str[0] ;
+    if ((i+1) > 9) fld[jj][ii+1] = str[1] ;
+  }
 
   /* plot "+" for nodes */
   for (i=0; i<n_nodes; i++)
   {
-    ii =  (int)(x_i[i] * mult_x) + 1  ;
-    jj = size_y - ( (int)(y_i[i] * mult_y) + 2 ) ;
+    ii =  (int)((x_i[i]-min_x) * mult_x) + 1  ;
+    jj = size_y - ( (int)((y_i[i]-min_y) * mult_y) + 1 ) ;
   
+#if 1 /* just '+' */
     fld[jj][ii] = '+' ;
+#else /* node numbers */
+    for (is=0; is<5; is++) { str[is] = '\0'; }
+    sprintf(str,"%d",i+1);
+    fld[jj][ii] = str[0] ;
+    if ((i+1) > 9) fld[jj][ii+1] = str[1] ;
+#endif
   }
-
-  /* TODO */
-
   /* plot data: */  
+  fprintf(fw,"\n");
   for (i=0; i<size_y; i++)
   {
     for (j=0; j<size_x; j++)
@@ -1608,7 +1661,7 @@ char *argv[];
   FILE *fd = NULL ;
   FILE *fp = NULL ;
 
-  fprintf(stderr,"\nDDFOR 1.0.4: direct stiffness method solver for statics of 2D frames.\n");
+  fprintf(stderr,"\nDDFOR 1.0.5: direct stiffness method solver for statics of 2D frames.\n");
   fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
 
   if (argc < 2)
@@ -1656,10 +1709,15 @@ char *argv[];
   else
   {
     /* write to file */
-    if ((fo=fopen(argv[2],"w")) == NULL)
+    if ((argv[2][0] != '0')&&(argv[2][0] != '-'))
     {
-      fprintf(stderr,"Failed to open output file!\n");
-      fo = stdout ;
+      if ((fo=fopen(argv[2],"w")) == NULL)
+      {
+        fprintf(stderr,"Failed to open output file!\n");
+        fo = stdout ;
+      }
+    } else {
+      fo = NULL ;
     }
   }
 
@@ -1670,10 +1728,15 @@ char *argv[];
   }
   else
   {
-    /* write to file */
-    if ((fd=fopen(argv[3],"w")) == NULL)
+    if ((argv[3][0] != '0')&&(argv[3][0] != '-'))
     {
-      fprintf(stderr,"Failed to open output file!\n");
+      /* write to file */
+      if ((fd=fopen(argv[3],"w")) == NULL)
+      {
+        fprintf(stderr,"Failed to open output file!\n");
+        fd = NULL ;
+      }
+    } else {
       fd = NULL ;
     }
   }
@@ -1685,10 +1748,15 @@ char *argv[];
   }
   else
   {
-    /* write to file */
-    if ((fp=fopen(argv[4],"w")) == NULL)
+    if ((argv[4][0] != '0')&&(argv[4][0] != '-'))
     {
-      fprintf(stderr,"Failed to open gfx file!\n");
+      /* write to file */
+      if ((fp=fopen(argv[4],"w")) == NULL)
+      {
+        fprintf(stderr,"Failed to open gfx file!\n");
+        fp = NULL ;
+      }
+    } else {
       fp = NULL ;
     }
   }
@@ -1707,8 +1775,11 @@ char *argv[];
   solve_eqs();
   fprintf(stderr,"End of solution. \n");
 
-  results(fo);
-  fclose(fo);
+  if (fo != NULL) 
+  { 
+    results(fo);
+    fclose(fo);
+  }
 
   if (fd != NULL) 
   { 
