@@ -1525,8 +1525,9 @@ double *mpos; /* position of max M absolute from 1st node */
 
 /** Plot data (model geometry) to text console */
 #ifndef NO_PSEUDO_GFX
-void pseudo_geom(fw)
+void pseudo_geom(fw, mode)
 FILE *fw;
+int   mode;
 {
   int size_x = 78 ; /* x console size (width)  */
   int size_y = 24 ; /*  y console size (height) */
@@ -1576,7 +1577,7 @@ FILE *fw;
   { mult_y = (double)(size_y-3) /  (max_y - min_y) ; }
   else { mult_y = 1 ; }
 
-  /* plot element numbers */
+  /* plot elements with numbers */
   for (i=0; i<n_elems; i++)
   {
     /* dx and dy computation */
@@ -1602,18 +1603,25 @@ FILE *fw;
       ii =  (int)((x_e-min_x) * mult_x) + 1  ;
       jj = size_y - ( (int)((y_e-min_y) * mult_y) + 1 ) ;
       fld[jj][ii] = symbol ;
+      
+      /* hinges: */
+      if ((is==2)&&((type[i]==1)||(type[i]==3))) fld[jj][ii] = 'o' ;
+      if ((is==(ilen-2))&&((type[i]==2)||(type[i]==3))) fld[jj][ii] = 'o' ;
     }
 
-    /* element numbers code */
-    x_e = 0.5 * (x_i[n2[i]-1] + x_i[n1[i]-1]) ;
-    y_e = 0.5 * (y_i[n2[i]-1] + y_i[n1[i]-1]) ;
-    ii =  (int)((x_e-min_x) * mult_x) + 1  ;
-    jj = size_y - ( (int)((y_e-min_y) * mult_y) + 1 ) ;
+    if (mode == -1) /* show element numbers */
+    {
+      /* element numbers code */
+      x_e = 0.5 * (x_i[n2[i]-1] + x_i[n1[i]-1]) ;
+      y_e = 0.5 * (y_i[n2[i]-1] + y_i[n1[i]-1]) ;
+      ii =  (int)((x_e-min_x) * mult_x) + 1  ;
+      jj = size_y - ( (int)((y_e-min_y) * mult_y) + 1 ) ;
   
-    for (is=0; is<5; is++) { str[is] = '\0'; }
-    sprintf(str,"%d",i+1);
-    fld[jj][ii] = str[0] ;
-    if ((i+1) > 9) fld[jj][ii+1] = str[1] ;
+      for (is=0; is<5; is++) { str[is] = '\0'; }
+      sprintf(str,"%d",i+1);
+      fld[jj][ii] = str[0] ;
+      if ((i+1) > 9) fld[jj][ii+1] = str[1] ;
+    }
   }
 
   /* plot "+" for nodes */
@@ -1621,16 +1629,18 @@ FILE *fw;
   {
     ii =  (int)((x_i[i]-min_x) * mult_x) + 1  ;
     jj = size_y - ( (int)((y_i[i]-min_y) * mult_y) + 1 ) ;
-  
-#if 1 /* just '+' */
-    fld[jj][ii] = '+' ;
-#else /* node numbers */
-    for (is=0; is<5; is++) { str[is] = '\0'; }
-    sprintf(str,"%d",i+1);
-    fld[jj][ii] = str[0] ;
-    if ((i+1) > 9) fld[jj][ii+1] = str[1] ;
-#endif
+    if (mode != 0) { fld[jj][ii] = '+' ; }
+    else 
+    {
+      for (is=0; is<5; is++) { str[is] = '\0'; }
+      sprintf(str,"%d",i+1);
+      fld[jj][ii] = str[0] ;
+      if ((i+1) > 9) fld[jj][ii+1] = str[1] ;
+    }
   }
+
+  /* plot symbols for supports */
+
   /* plot data: */  
   fprintf(fw,"\n");
   for (i=0; i<size_y; i++)
@@ -1778,6 +1788,12 @@ char *argv[];
   if (fo != NULL) 
   { 
     results(fo);
+#ifndef NO_PSEUDO_GFX
+    fprintf(fo,"\n\Scheme of structure with nodes numbers: \n\n");
+    pseudo_geom(fo, 0);
+    fprintf(fo,"\nElements numbers:\n\n");
+    pseudo_geom(fo, -1);
+#endif
     fclose(fo);
   }
 
@@ -1793,9 +1809,6 @@ char *argv[];
     fclose(fp);
   }
 
-#ifndef NO_PSEUDO_GFX
-  pseudo_geom(stderr);
-#endif
 
   free_sol_data();
   free_data();
