@@ -83,11 +83,11 @@ extern void free_sol_data();
 /* Allocates space for linear system */
 extern int alloc_kf();
 
-extern double norm_K();
+extern double norm_K(); /* matrix norm */
 
-extern double vec_norm(double *a, int len);
+extern double vec_norm(double *a, int len); /* vector norm */
 
-extern int solve_eqs();
+extern int solve_eqs(); /* conjugate gradient solver */
 
 /** Local stiffness matrix */
 extern void stiff_loc(int type, float E, float A, float I, float l);
@@ -98,10 +98,10 @@ extern void tran_zero();
 /** Transformation matrix */
 extern void tran(double s, double c);
 
-/* fils "ke" with content of "keg" */
+/* fills "ke" with content of "keg" */
 extern void ke_switch();
 
-extern void ke_to_keg(double s, double c);
+extern void ke_to_keg(double s, double c); /* local->global element matrix */
 
 /* puts data to the right place in K */
 extern void md_K_add(int row, int col, float val);
@@ -147,7 +147,7 @@ extern int beam_max(int type, int epos, int div, double *nmax, double *npos, dou
  *  This routine is meant for plotting tools */
 extern void in_gfx(int type, int epos, int div, int ppos, double mult, double *vx, double *vy);
 
-void plint(int num)
+void plint(int num) /* plot integer value */
 {
   char s[10] ;
   int  i ;
@@ -158,7 +158,7 @@ void plint(int num)
   plots(s);
 }
 
-void pldbl(double num)
+void pldbl(double num) /* plot double value */
 {
   char s[10] ;
   int  i ;
@@ -625,6 +625,9 @@ int main(int argc, char *argv[])
     c = getch();
     switch(c)
     {
+      case 102: /* F,f: forces, loads */
+      case  70: /* TODO */
+        break;
       case 43: /* zoom += */
       case 61: 
         zoom += 0.1 ; if (zoom>10) zoom = 10 ;

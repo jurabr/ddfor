@@ -360,6 +360,38 @@ FILE *fw ;
   return(0);
 }
 
+/** Write input data to file */
+int write_idata(fw)
+FILE *fw ;
+{
+  int i;
+
+  fprintf(fw,"%d\n", n_nodes);
+  for (i=0; i<n_nodes; i++)
+  { fprintf(fw,"%e %e\n", x_i[i], y_i[i]) ; }
+
+  fprintf(fw,"%d\n", n_elems);
+  for (i=0; i<n_elems; i++)
+  {
+    fprintf(fw,"%d %d %d %e %e %e %e\n",
+      type[i],n1[i],n2[i],E[i],A[i],I[i],rho[i]) ;
+  }
+
+  fprintf(fw,"%d\n", n_disps);
+  for (i=0; i<n_disps; i++)
+  { fprintf(fw,"%d %d %e\n",d_n[i], d_d[i], d_v[i]) ; }
+
+  fprintf(fw,"%d\n", n_nfors);
+  for (i=0; i<n_nfors; i++)
+  { fprintf(fw,"%d %d %e\n",f_n[i], f_d[i], f_v[i]) ; }
+
+  fprintf(fw,"%d\n", n_eload);
+  for (i=0; i<n_eload; i++)
+  { fprintf(fw,"%d %d %e %e\n",l_e[i], l_d[i], l_v1[i], l_v2[i]) ; }
+
+  return(0);
+}
+
 /** free K,F */
 void free_sol_data()
 {
@@ -376,25 +408,57 @@ void free_sol_data()
   if (q != NULL )free(q);
 }
 
+/* Compute free rotations */
+void comp_frot()
+{
+  int i ;
+  int sum ;
+
+  sum = 0 ;
+
+  for (i=0; i<n_elems; i++)
+  {
+    switch (type[i])
+    { 
+      case 3: sum = sum + 2 ; break ;
+      case 2: sum = sum + 1 ; break ;
+      case 1: sum = sum + 1 ; break ;
+      case 0: 
+      default: break ;
+    }
+  }
+
+  /* TODO: allocation of data fields for free rotations! */
+
+  for (i=0; i<n_elems; i++)
+  {
+    /* TODO: code here */
+  }
+}
+
 /* Allocates space for linear system */
 int alloc_kf()
 {
   int i,j, sum;
+  int k_size = 0 ;
 
-  if ((K_sizes = (int *)malloc(3*n_nodes*sizeof(int)))   == NULL) { goto memFree ; }
-  if ((K_from  = (int *)malloc(3*n_nodes*sizeof(int)))   == NULL) { goto memFree ; } 
-  if ((F_val   = (double *)malloc(3*n_nodes*sizeof(double))) == NULL) { goto memFree ; } 
-  if ((u_val   = (double *)malloc(3*n_nodes*sizeof(double))) == NULL) { goto memFree ; } 
+  k_size = 3*n_nodes ;
+  /* todo:computation of free retations here! */
 
-  if ((M   = (double *)malloc(3*n_nodes*sizeof(double))) == NULL) { goto memFree ; } 
-  if ((r   = (double *)malloc(3*n_nodes*sizeof(double))) == NULL) { goto memFree ; } 
-  if ((z   = (double *)malloc(3*n_nodes*sizeof(double))) == NULL) { goto memFree ; } 
-  if ((p   = (double *)malloc(3*n_nodes*sizeof(double))) == NULL) { goto memFree ; } 
-  if ((q   = (double *)malloc(3*n_nodes*sizeof(double))) == NULL) { goto memFree ; } 
+  if ((K_sizes = (int *)malloc(k_size*sizeof(int)))   == NULL) { goto memFree;}
+  if ((K_from  = (int *)malloc(k_size*sizeof(int)))   == NULL) {goto memFree;} 
+  if ((F_val = (double *)malloc(k_size*sizeof(double))) == NULL) {goto memFree;} 
+  if ((u_val = (double *)malloc(k_size*sizeof(double))) == NULL) {goto memFree;} 
+
+  if ((M   = (double *)malloc(k_size*sizeof(double))) == NULL) {goto memFree;} 
+  if ((r   = (double *)malloc(k_size*sizeof(double))) == NULL) {goto memFree;} 
+  if ((z   = (double *)malloc(k_size*sizeof(double))) == NULL) {goto memFree;} 
+  if ((p   = (double *)malloc(k_size*sizeof(double))) == NULL) {goto memFree;} 
+  if ((q   = (double *)malloc(k_size*sizeof(double))) == NULL) {goto memFree;} 
 
   K_len = 0 ;
 
-  for (i=0; i<n_nodes*3; i++) 
+  for (i=0; i<k_size; i++) 
   { 
     K_sizes[i] = 0 ; 
     K_from[i]  = 0 ; 
@@ -628,7 +692,7 @@ double l ;
   ke[0][3] =( -tuh) ;
   ke[3][0] =( -tuh) ;
 
-#if 1
+
   switch (type)
   {
     case 0: /* |--| */
@@ -682,29 +746,6 @@ double l ;
     case 3: /* o--o .. nothing to do */
       break;
   }
-#else
-      ke[1][1] = (12.0*E*I)/(l*l*l) ;
-      ke[1][4] = (-12.0*E*I)/(l*l*l) ;
-      ke[4][1] = (-12.0*E*I)/(l*l*l) ;
-      ke[4][4] = (12.0*E*I)/(l*l*l) ;
-
-      ke[1][2] = (-6.0*E*I)/(l*l) ;
-      ke[1][5] = (-6.0*E*I)/(l*l) ;
-      ke[2][1] = (-6.0*E*I)/(l*l) ;
-      ke[2][4] = (6.0*E*I)/(l*l) ;
-
-      ke[4][2] = (6.0*E*I)/(l*l) ;
-      ke[4][5] = (6.0*E*I)/(l*l) ;
-      ke[5][1] = (-6.0*E*I)/(l*l) ;
-      ke[5][4] = (6.0*E*I)/(l*l) ;
-
-      ke[2][2] = (4.0*E*I)/(l) ;
-      ke[5][5] = (4.0*E*I)/(l) ;
-
-      ke[2][5] = (2.0*E*I)/(l) ;
-      ke[5][2] = (2.0*E*I)/(l) ;
-
-#endif
 }
 
 
@@ -734,47 +775,11 @@ double c ;
   T[4][4] = c ;
 }
 
-/* fills "ke" with content of "keg" */
+/* fils "ke" with content of "keg" */
 void ke_switch()
 {
   int i, j;
   for (i=0; i<6; i++) { for (j=0; j<6; j++) { ke[i][j] = keg[i][j] ; } }
-}
-
-/* removes a part of ke related to the hinge(s) */
-void ke_clean(type)
-int type;
-{
-  int i ;
-
-  switch (type)
-  {
-    case 0: /* |--| */
-      break;
-    case 1: /* o--| */
-      for (i=0; i<6; i++)
-      {
-        keg[i][2] = 0.0 ;
-        keg[2][i] = 0.0 ;
-      }
-      break;
-    case 2: /* |--o */ 
-      for (i=0; i<6; i++)
-      {
-        keg[i][5] = 0.0 ;
-        keg[5][i] = 0.0 ;
-      }
-      break;
-    case 3: /* o--o */
-      for (i=0; i<6; i++)
-      {
-        keg[i][2] = 0.0 ;
-        keg[2][i] = 0.0 ;
-        keg[i][5] = 0.0 ;
-        keg[5][i] = 0.0 ;
-      }
-      break;
-  }
 }
 
 void ke_to_keg(s, c)
@@ -934,10 +939,6 @@ void stiff()
 
     /* ke, fe transformation: */
     ke_to_keg(s, c) ;
-
-#if 0
-  ke_clean(type[i]) ;
-#endif
 
     /* localisation */
     for (k=0; k<6; k++)
@@ -1852,7 +1853,7 @@ char *argv[];
   { 
     results(fo);
 #ifndef NO_PSEUDO_GFX
-    fprintf(fo,"\nScheme of structure with nodes numbers: \n\n");
+    fprintf(fo,"\n\Scheme of structure with nodes numbers: \n\n");
     pseudo_geom(fo, 0);
     fprintf(fo,"\nElements numbers:\n\n");
     pseudo_geom(fo, -1);
