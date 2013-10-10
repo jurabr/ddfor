@@ -79,6 +79,11 @@ double *z    = NULL ;
 double *p    = NULL ;
 double *q    = NULL ;
 
+int  K_nfree = 0    ; /* number of free rotations */
+int *K_fe    = NULL ; /* free rotations elements  */
+int *K_fn    = NULL ; /* free rotations nodes     */
+int *K_fpos  = NULL ; /* free rotations positions */
+
 /** Reading of data from file */
 int read_data(fw)
 FILE *fw ;
@@ -428,12 +433,56 @@ void comp_frot()
     }
   }
 
-  /* TODO: allocation of data fields for free rotations! */
+  if (sum > 0)
+  {
+    if ((K_fe = (int *)malloc(sum*sizeof(int)))   == NULL) { goto memFree;}
+    if ((K_fn = (int *)malloc(sum*sizeof(int)))   == NULL) { goto memFree;}
+    if ((K_fpos = (int *)malloc(sum*sizeof(int)))   == NULL) { goto memFree;}
+    K_nfree = sum ;
+  }
+  else
+  {
+    return ;
+  }
 
+  sum = 0 ;
   for (i=0; i<n_elems; i++)
   {
-    /* TODO: code here */
+    switch (type[i])
+    { 
+      case 3: 
+              K_fe[sum]   = i ;
+              K_fn[sum]   = 1 ;
+              K_fpos[sum] = (3*n_nodes) + sum + 1 ;
+              sum = sum + 1 ;
+
+              K_fe[sum]   = i ;
+              K_fn[sum]   = 2 ;
+              K_fpos[sum] = (3*n_nodes) + sum + 1 ;
+              sum = sum + 1 ; 
+              break ; /* o--o */
+      case 2:
+              K_fe[sum]   = i ;
+              K_fn[sum]   = 2 ;
+              K_fpos[sum] = (3*n_nodes) + sum + 1 ;
+              sum = sum + 1 ; 
+              break ; /* |--o */
+      case 1: 
+              K_fe[sum]   = i ;
+              K_fn[sum]   = 1 ;
+              K_fpos[sum] = (3*n_nodes) + sum + 1 ;
+              sum = sum + 1 ;
+              break ; /* o--| */
+      case 0: 
+      default: break ;
+    }
   }
+  return ;
+memFree:
+  free(K_fe); K_fe = NULL ;
+  free(K_fn); K_fn = NULL ;
+  free(K_fpos); K_fpos = NULL ;
+  K_nfree = 0 ;
 }
 
 /* Allocates space for linear system */
@@ -443,7 +492,7 @@ int alloc_kf()
   int k_size = 0 ;
 
   k_size = 3*n_nodes ;
-  /* todo:computation of free retations here! */
+  /* TODO: computation of free retations here! */
 
   if ((K_sizes = (int *)malloc(k_size*sizeof(int)))   == NULL) { goto memFree;}
   if ((K_from  = (int *)malloc(k_size*sizeof(int)))   == NULL) {goto memFree;} 
@@ -1853,7 +1902,7 @@ char *argv[];
   { 
     results(fo);
 #ifndef NO_PSEUDO_GFX
-    fprintf(fo,"\n\Scheme of structure with nodes numbers: \n\n");
+    fprintf(fo,"\nScheme of structure with nodes numbers: \n\n");
     pseudo_geom(fo, 0);
     fprintf(fo,"\nElements numbers:\n\n");
     pseudo_geom(fo, -1);
