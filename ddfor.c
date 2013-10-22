@@ -492,7 +492,8 @@ int alloc_kf()
   int k_size = 0 ;
 
   k_size = 3*n_nodes ;
-  /* TODO: computation of free retations here! */
+  
+  comp_frot() ; /* computation of free rotations */
 
   if ((K_sizes = (int *)malloc(k_size*sizeof(int)))   == NULL) { goto memFree;}
   if ((K_from  = (int *)malloc(k_size*sizeof(int)))   == NULL) {goto memFree;} 
@@ -1100,6 +1101,13 @@ void free_data()
   if (n_eload > 0)
   {
     free(l_e);free(l_d);free(l_v1);free(l_v2);
+  }
+  if (K_nfree > 0)
+  {
+    free(K_fe); K_fe = NULL ;
+    free(K_fn); K_fn = NULL ;
+    free(K_fpos); K_fpos = NULL ;
+    K_nfree = 0 ;
   }
 }
 
