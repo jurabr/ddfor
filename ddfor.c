@@ -66,6 +66,7 @@ double  ueg[6];
 double  ue[6];
 
 int    K_len    = 0 ;
+int    K_size   = 0 ;
 int   *K_sizes  = NULL ; /* lenghts of K's rows */
 int   *K_from   = NULL ;
 int   *K_cols   = NULL ;
@@ -83,6 +84,7 @@ int  K_nfree = 0    ; /* number of free rotations */
 int *K_fe    = NULL ; /* free rotations elements  */
 int *K_fn    = NULL ; /* free rotations nodes     */
 int *K_fpos  = NULL ; /* free rotations positions */
+int pvec[6]         ; /* localisation field       */
 
 /** Reading of data from file */
 int read_data(fw)
@@ -485,15 +487,48 @@ memFree:
   K_nfree = 0 ;
 }
 
+/** fills localisation vector for free roation on element */
+void e_frotv(epos)
+  int epos ;
+{
+  int i ;
+
+  for (i=0; i<6; i++) /* normal routine */
+  {
+    if (i <3) { pvec[i] = n1[epos]*3 + i - 2 ; }
+    else      { pvec[i] = n2[epos]*3 + i - 5 ; }
+  }
+
+  for (i=0; i<K_nfree; i++)
+  {
+    if (epos == K_fe[i])
+    {
+      switch (type[epos])
+      {
+        case 3: /* o--o */
+          pvec[2] = K_fpos[i] ; pvec[5] = K_fpos[i+1] ; return ; break;
+          break;
+        case 2: /* |--o */
+          pvec[5] = K_fpos[i] ; return ; break;
+          break;
+        case 1:  /* o--| */
+          pvec[2] = K_fpos[i] ; return ; break;
+        default: /* nothing to do */
+          break;
+      }
+    }
+  }
+}
+
 /* Allocates space for linear system */
 int alloc_kf()
 {
   int i,j, sum;
   int k_size = 0 ;
 
-  k_size = 3*n_nodes ;
-  
   comp_frot() ; /* computation of free rotations */
+
+  k_size = 3*n_nodes + K_nfree ;
 
   if ((K_sizes = (int *)malloc(k_size*sizeof(int)))   == NULL) { goto memFree;}
   if ((K_from  = (int *)malloc(k_size*sizeof(int)))   == NULL) {goto memFree;} 
@@ -539,10 +574,14 @@ int alloc_kf()
       }
     }
   }
+#ifdef FREEROT
+  for (j=(3*n_nodes); j<k_size; j++)
+    { K_sizes[j]=6; }
+#endif
 
   sum = 0 ;
 
-  for (i=0; i<(n_nodes*3); i++)
+  for (i=0; i<k_size; i++)
   {
     K_from[i] = sum ;
     sum += K_sizes[i] ;
@@ -559,6 +598,7 @@ int alloc_kf()
     K_val[i]  = 0.0 ;
   }
 
+  K_size = k_size ;
   return(0);
 memFree:
   fprintf(stderr,"Not enough memory!");
@@ -607,7 +647,7 @@ int solve_eqs()
   int   n = 0;
   int   i,j,k;
 
-  n = 3*n_nodes ;
+  n = K_size;
 
   normA = norm_K();
   normB = vec_norm(F_val, n);
@@ -743,6 +783,7 @@ double l ;
   ke[3][0] =( -tuh) ;
 
 
+#ifndef FREEROT
   switch (type)
   {
     case 0: /* |--| */
@@ -796,6 +837,28 @@ double l ;
     case 3: /* o--o .. nothing to do */
       break;
   }
+#else
+  ke[1][1] = (12.0*E*I)/(l*l*l) ;
+  ke[1][4] = (-12.0*E*I)/(l*l*l) ;
+  ke[4][1] = (-12.0*E*I)/(l*l*l) ;
+  ke[4][4] = (12.0*E*I)/(l*l*l) ;
+
+  ke[1][2] = (-6.0*E*I)/(l*l) ;
+  ke[1][5] = (-6.0*E*I)/(l*l) ;
+  ke[2][1] = (-6.0*E*I)/(l*l) ;
+  ke[2][4] = (6.0*E*I)/(l*l) ;
+
+  ke[4][2] = (6.0*E*I)/(l*l) ;
+  ke[4][5] = (6.0*E*I)/(l*l) ;
+  ke[5][1] = (-6.0*E*I)/(l*l) ;
+  ke[5][4] = (6.0*E*I)/(l*l) ;
+
+  ke[2][2] = (4.0*E*I)/(l) ;
+  ke[5][5] = (4.0*E*I)/(l) ;
+
+  ke[2][5] = (2.0*E*I)/(l) ;
+  ke[5][2] = (2.0*E*I)/(l) ;
+#endif
 }
 
 
@@ -825,7 +888,7 @@ double c ;
   T[4][4] = c ;
 }
 
-/* fils "ke" with content of "keg" */
+/* fills "ke" with content of "keg" */
 void ke_switch()
 {
   int i, j;
@@ -913,6 +976,7 @@ double va;
 double vb;
 double L;
 {
+#ifndef FREEROT
   switch (type[epos])
   {
     case 0: /* |--| */
@@ -945,6 +1009,14 @@ double L;
             break ;
     default: return; break;
   }
+#else
+  fe[0]+=(-(2.0*na+1.0*nb)*L)/6.0 ;
+  fe[1]+=(-(7.0*va+3.0*vb)*L)/20.0 ;
+  fe[2]+=((3.0*va+2.0*vb)*L*L)/60.0 ;
+  fe[3]+=(-(1.0*na+2.0*nb)*L)/6.0 ;
+  fe[4]+=(-(3.0*va+7.0*vb)*L)/20.0 ;
+  fe[5]+=(-(2.0*va+3.0*vb)*L*L)/60.0 ;
+#endif
 }
 
 /* computes stiffness matrix of the structure */
@@ -991,6 +1063,7 @@ void stiff()
     ke_to_keg(s, c) ;
 
     /* localisation */
+#ifndef FREEROT
     for (k=0; k<6; k++)
     {
       if (k <3) { ii = n1[i]*3 + k - 2 ; }
@@ -1006,6 +1079,20 @@ void stiff()
         md_K_add(ii, jj, keg[k][j]) ;
       }
     }
+#else
+    e_frotv(i, pvec);
+    for (k=0; k<6; k++)
+    {
+      ii = pvec[k] ;
+      F_val[ii-1] += feg[k] ;
+
+      for (j=0; j<6; j++)
+      {
+        jj = pvec[j] ;
+        md_K_add(ii, jj, keg[k][j]) ;
+      }
+    }
+#endif
   }
 }
 
@@ -1266,11 +1353,20 @@ int epos ;
   }
     
   /* get initial stuff */
+#ifndef FREEROT
   for (i=0; i<3; i++)
   {
     ueg[i]   = u_val[(3*(n1[epos]-1))+i];
     ueg[i+3] = u_val[(3*(n2[epos]-1))+i];
   }
+#else
+  e_frotv(epos);
+  for (i=0; i<3; i++)
+  {
+    ueg[i]   = u_val[pvec[i]-1];
+    ueg[i+3] = u_val[pvec[i+3]-1];
+  }
+#endif
 
   x1 = x_i[n1[epos]-1] ;
   y1 = y_i[n1[epos]-1] ;
