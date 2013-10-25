@@ -861,6 +861,93 @@ double l ;
 #endif
 }
 
+/** Local geometric stiffness matrix */
+void geom_loc(type, N, L)
+int type ;
+float N ;
+double L ;
+{
+  int    i, j ;
+
+  for (i=0; i<6; i++)
+  {
+    for (j=0; j<6; j++)
+    {
+      ke[i][j] = 0.0 ;
+      keg[i][j] = 0.0 ;
+    }
+  }
+
+  ke[1][1] = 6.0 / 5.0 ;
+  ke[1][2] = L / 10.0 ;
+  ke[1][4] = -6.0 / 5.0 ;
+  ke[1][5] = -L / 10.0 ;
+
+  ke[2][1] = L / 10.0 ;
+  ke[2][2] = (2*L*L) / 15.0 ;
+  ke[2][4] = -L / 10.0 ;
+  ke[2][5] = -(2*L*L) / 30.0 ;
+
+  ke[4][1] = -6.0 / 5.0 ;
+  ke[4][2] = -L / 10.0 ;
+  ke[4][4] = 6.0 / 5.0 ;
+  ke[4][5] = -L / 10.0 ;
+
+  ke[5][1] = L / 10.0 ;
+  ke[5][2] = -(2*L*L) / 30.0 ;
+  ke[5][4] = -L / 10.0 ;
+  ke[5][5] = (2*L*L) / 15.0 ;
+
+  for (i=0; i<6; i++)
+  {
+    for (j=0; j<6; j++) { ke[i][j] = (N/L) * ke[i][j] ; }
+  }
+}
+
+/** Local mass matrix */
+void mass_loc(type, dens, Ax, Lx)
+int type ;
+float dens ;
+float Ax ;
+double Lx ;
+{
+  int i, j ;
+  float mass ;
+
+  for (i=0; i<6; i++)
+  {
+    for (j=0; j<6; j++)
+    {
+      ke[i][j] = 0.0 ;
+      keg[i][j] = 0.0 ;
+    }
+  }
+	mass = dens * Ax * Lx / 420.0 ;
+  ke[0][0] = mass*140.0 ;
+  ke[0][3] = mass*70.0 ;
+
+	ke[1][1] = mass*156.0 ;
+  ke[1][2] = 22.0*Lx*mass ;
+  ke[1][4] = 54.0*mass ;
+  ke[1][5] = (-13.0)*Lx*mass ;
+
+  ke[2][2] = mass * 4.0*Lx*Lx ;
+  ke[2][4] = mass * 13.0*Lx ;
+  ke[2][5] = mass * (-3.0)*Lx*Lx ;
+
+  ke[3][3] = 140.0*mass ;
+
+  ke[4][4] = mass * 156.0 ;
+  ke[4][5] = mass* (-22.0)*Lx ;
+
+  ke[5][5] = mass * 4.0*Lx*Lx ;
+
+	for (i=0; i<6; i++)
+	{
+		for (j=i; j<6; j++) { ke[j][i] =  ke[i][j] ; }
+	}
+}
+
 
 /* set transformation matrix to zero */
 void tran_zero()
@@ -1092,6 +1179,37 @@ void stiff()
         md_K_add(ii, jj, keg[k][j]) ;
       }
     }
+#endif
+
+#ifdef FREEROT /* used only with freerot code! */
+    /* TODO: compute geometric stiffness matrix here */
+#if 0
+    geom_loc(type, N, L)
+    ke_to_keg(s, c) ;
+    for (k=0; k<6; k++)
+    {
+      ii = pvec[k] ;
+      for (j=0; j<6; j++)
+      {
+        jj = pvec[j] ;
+        md_K_add(ii, jj, keg[k][j]) ;
+      }
+    }
+#endif
+    /* TODO: compute mass matrix here */
+#if 0
+    mass_loc(type, dens, A, l);
+    ke_to_keg(s, c) ;
+    for (k=0; k<6; k++)
+    {
+      ii = pvec[k] ;
+      for (j=0; j<6; j++)
+      {
+        jj = pvec[j] ;
+        md_K_add(ii, jj, keg[k][j]) ;
+      }
+    }
+#endif
 #endif
   }
 }
