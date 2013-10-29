@@ -1295,6 +1295,44 @@ float val;
   F_val[row] = val ; /* it will destroy any force in this place */
 }
 
+/* adds supports to M (zero values only) */
+void add_one_disp_M(node, dir)
+int   node;
+int   dir;
+{
+  int i,j,n ;
+  int row ;
+
+  row = (node-1)*3 + dir - 1 ;  /* note: -1 ? */
+  n = 3*n_nodes ;
+
+  for (i=0; i<n; i++)
+  {
+    for (j=K_from[i]; j<(K_from[i]+K_sizes[i]); j++)
+    {
+      if (M_cols[i] == (row))
+      {
+        if (M_cols[i] < 0) {break;}
+        M_val[i] = 0.0 ;
+        break ;
+      }
+    }
+  }
+
+  for (i=K_from[row]; i<K_from[row]+K_sizes[row]; i++)
+  {
+    if (M_cols[i] < 0) {break;}
+    if (M_cols[i] == row) 
+    {
+      M_val[i] = 1.0 ;
+    }
+    else
+    {
+      M_val[i] = 0.0 ;
+    }
+  }
+}
+
 /* forces */
 void add_one_force(node, dir, val)
 int   node;
@@ -1320,6 +1358,9 @@ void disps_and_loads()
   for (i=0; i<n_disps; i++)
   {
     add_one_disp(d_n[i], d_d[i], d_v[i]);
+#ifdef FREEROT
+    if (sol_mode == 2 ) { add_one_disp_M(d_n[i], d_d[i]); } /* modal */
+#endif
   }
 }
 
@@ -1772,6 +1813,12 @@ void geom_stiff()
         md_M_add(ii, jj, keg[k][j]) ;
       }
     }
+  }
+
+  /* boundary conditions */
+  for (i=0; i<n_disps; i++)
+  {
+    add_one_disp_M(d_n[i], d_d[i]);
   }
 #endif
 }
