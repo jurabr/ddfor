@@ -26,6 +26,8 @@
 #endif
 #include <math.h>
 
+int    sol_mode = 0 ; /* 0=statics, 1=stability, 2=modal */
+
 int    n_nodes = 0 ;
 int    n_elems = 0 ;
 int    n_disps = 0 ;
@@ -73,6 +75,9 @@ int   *K_cols   = NULL ;
 double *K_val    = NULL ;
 double *F_val    = NULL ;
 double *u_val    = NULL ;
+
+int   *M_cols   = NULL ; /* Kg or M matrix */
+double *M_val    = NULL ;
 
 double *M    = NULL ;
 double *r    = NULL ;
@@ -406,6 +411,7 @@ void free_sol_data()
   if (u_val != NULL )free(u_val);
   if (K_sizes != NULL )free(K_sizes);
   if (K_from != NULL )free(K_from);
+  if (K_cols != NULL )free(K_cols);
   if (K_val != NULL )free(K_val);
 
   if (M != NULL )free(M);
@@ -413,6 +419,12 @@ void free_sol_data()
   if (z != NULL )free(z);
   if (p != NULL )free(p);
   if (q != NULL )free(q);
+
+  if (sol_mode > 0)
+  {
+    if (M_cols!=NULL)free(M_cols);
+    if (M_val !=NULL)free(M_val);
+  }
 }
 
 /* Compute free rotations */
@@ -596,6 +608,17 @@ int alloc_kf()
   {
     K_cols[i] = -1 ;
     K_val[i]  = 0.0 ;
+  }
+
+  if (sol_mode > 0)
+  {
+    if ((M_cols = (int *)malloc(K_len*sizeof(int))) == NULL) { goto memFree ; } 
+    if ((M_val = (double *)malloc(K_len*sizeof(double))) == NULL) { goto memFree ; } 
+    for (i=0; i<K_len; i++)
+    {
+      M_cols[i] = -1 ;
+      M_val[i]  = 0.0 ;
+    }
   }
 
   K_size = k_size ;
@@ -1054,6 +1077,35 @@ float val;
   return; /* we should NOT reach this point */
 }
 
+/* puts data to the right place in M */
+void md_M_add(row, col, val)
+int row;
+int col;
+float val;
+{
+  int i ;
+
+  for (i=K_from[row-1]; i<(K_from[row-1]+K_sizes[row-1]); i++)
+  {
+
+    if (M_cols[i] == (col-1))
+    {
+      M_val[i] += val ; 
+      return ;
+    }
+
+    if (M_cols[i] < 0)
+    {
+      M_cols[i] = (col-1) ;
+      M_val[i] = val ; 
+      return ;
+    }
+  }
+  fprintf(stderr,"Addition of [%i,%i] to M failed (%e)\n",row,col,val);
+  return; /* we should NOT reach this point */
+}
+
+
 /* loads on elements */
 void one_eload(epos, na, nb, va, vb, L)
 int epos;
@@ -1111,7 +1163,6 @@ void stiff()
 {
   int i, j, k, ii, jj, m ;
   float x1,y1, x2,y2, l, s, c ;
-
 
   for (i=0; i<n_elems; i++)
   {
@@ -1182,34 +1233,22 @@ void stiff()
 #endif
 
 #ifdef FREEROT /* used only with freerot code! */
-    /* TODO: compute geometric stiffness matrix here */
-#if 0
-    geom_loc(type, N, L)
-    ke_to_keg(s, c) ;
-    for (k=0; k<6; k++)
+    /* mass matrix */
+    if (sol_mode == 2) /* modal */
     {
-      ii = pvec[k] ;
-      for (j=0; j<6; j++)
+      tran_zero();
+      mass_loc(type, rho[i], A[i], (double)l);
+      ke_to_keg(s, c) ;
+      for (k=0; k<6; k++)
       {
-        jj = pvec[j] ;
-        md_K_add(ii, jj, keg[k][j]) ;
+        ii = pvec[k] ;
+        for (j=0; j<6; j++)
+        {
+          jj = pvec[j] ;
+          md_M_add(ii, jj, keg[k][j]) ;
+        }
       }
     }
-#endif
-    /* TODO: compute mass matrix here */
-#if 0
-    mass_loc(type, dens, A, l);
-    ke_to_keg(s, c) ;
-    for (k=0; k<6; k++)
-    {
-      ii = pvec[k] ;
-      for (j=0; j<6; j++)
-      {
-        jj = pvec[j] ;
-        md_K_add(ii, jj, keg[k][j]) ;
-      }
-    }
-#endif
 #endif
   }
 }
@@ -1693,6 +1732,48 @@ FILE *fw;
     
     fprintf(fw,"\n");
   }
+}
+
+/* geometric stiffness matrix */
+void geom_stiff()
+{
+#ifdef FREEROT /* used only with freerot code! */
+  int i, j, k, ii, jj, m ;
+  float x1,y1, x2,y2, l, s, c, N ;
+
+  if (sol_mode != 1) return;
+
+  for (i=0; i<n_elems; i++)
+  {
+    for (m=0; m<6; m++) {fe[m] = 0.0 ; feg[m]=0.0;}
+    x1 = x_i[n1[i]-1] ;
+    y1 = y_i[n1[i]-1] ;
+    x2 = x_i[n2[i]-1] ;
+    y2 = y_i[n2[i]-1] ;
+    
+    l = sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)) ;
+    if (l <= 0.0) {continue;} /* oops, zero length element */
+    s = (y2-y1)/l ;
+    c = (x2-x1)/l ;
+    
+    tran_zero();
+    ke_to_keg(s, c) ;
+
+    N = 0.5 * (in_force(1, i, 3, 0) + in_force(1, i, 3, 3));
+
+    geom_loc(type, (double)N, (double)l);
+    ke_to_keg(s, c) ;
+    for (k=0; k<6; k++)
+    {
+      ii = pvec[k] ;
+      for (j=0; j<6; j++)
+      {
+        jj = pvec[j] ;
+        md_M_add(ii, jj, keg[k][j]) ;
+      }
+    }
+  }
+#endif
 }
 
 /** Compute internal force (N, V, M) for given point of beam
