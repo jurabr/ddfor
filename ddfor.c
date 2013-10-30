@@ -26,8 +26,6 @@
 #ifdef UI
 #include <string.h>
 #endif
-#else
-#undef UI
 #endif
 #include <math.h>
 
@@ -83,6 +81,9 @@ double *u_val    = NULL ;
 
 int   *M_cols   = NULL ; /* Kg or M matrix */
 double *M_val    = NULL ;
+double *Mu_val    = NULL ;
+double *Fr_val    = NULL ;
+double *uu_val    = NULL ;
 
 double *M    = NULL ;
 double *r    = NULL ;
@@ -431,6 +432,9 @@ void free_sol_data()
   {
     if (M_cols!=NULL)free(M_cols);
     if (M_val !=NULL)free(M_val);
+    if (Mu_val !=NULL)free(Mu_val);
+    if (Fr_val !=NULL)free(Fr_val);
+    if (uu_val !=NULL)free(uu_val);
   }
 }
 
@@ -621,10 +625,19 @@ int alloc_kf()
   {
     if ((M_cols = (int *)malloc(K_len*sizeof(int))) == NULL) { goto memFree ; } 
     if ((M_val = (double *)malloc(K_len*sizeof(double))) == NULL) { goto memFree ; } 
+    if ((Mu_val = (double *)malloc(K_size*sizeof(double))) == NULL) { goto memFree ; } 
+    if ((Fr_val = (double *)malloc(K_size*sizeof(double))) == NULL) { goto memFree ; } 
+    if ((uu_val = (double *)malloc(K_size*sizeof(double))) == NULL) { goto memFree ; } 
     for (i=0; i<K_len; i++)
     {
       M_cols[i] = -1 ;
       M_val[i]  = 0.0 ;
+    }
+    for (i=0; i<K_size; i++)
+    {
+      Mu_val[i] = 0.0 ;
+      Fr_val[i] = 0.0 ;
+      uu_val[i] = 0.0 ;
     }
   }
 
@@ -1012,9 +1025,11 @@ void ke_switch()
   for (i=0; i<6; i++) { for (j=0; j<6; j++) { ke[i][j] = keg[i][j] ; } }
 }
 
-void ke_to_keg(s, c)
+/* tranforms ke and fe to keg and feg (set fev=0 to ignore fe->feg)*/
+void ke_to_keg(s, c, fev)
 double s ;
 double c ;
+int fev ;
 {
   int i,j,k;
   float fval, kval ;
@@ -1027,7 +1042,7 @@ double c ;
 
     for (j=0; j<6; j++)
     {
-      fval += T[j][i] * fe[j] ;
+      if (fev != 0) fval += T[j][i] * fe[j] ;
 
       kval = 0.0 ;
       for (k=0; k<6; k++)
@@ -1036,7 +1051,7 @@ double c ;
       }
       keg[i][j] = kval ;
     }
-    feg[i] = fval ;
+    if (fev != 0)feg[i] = fval ;
   }
 
   ke_switch();
@@ -1205,7 +1220,7 @@ void stiff()
     }
 
     /* ke, fe transformation: */
-    ke_to_keg(s, c) ;
+    ke_to_keg(s, c,1) ;
 
     /* localisation */
 #ifndef FREEROT
@@ -1245,7 +1260,7 @@ void stiff()
     {
       tran_zero();
       mass_loc(type, rho[i], A[i], (double)l);
-      ke_to_keg(s, c) ;
+      ke_to_keg(s, c,0) ;
       for (k=0; k<6; k++)
       {
         ii = pvec[k] ;
@@ -1362,12 +1377,15 @@ void disps_and_loads()
     add_one_force(f_n[i], f_d[i], f_v[i]);
   }
 
-  for (i=0; i<n_disps; i++)
+  if (sol_mode == 2)
   {
-    add_one_disp(d_n[i], d_d[i], d_v[i]);
+    for (i=0; i<n_disps; i++)
+    {
+      add_one_disp(d_n[i], d_d[i], d_v[i]);
 #ifdef FREEROT
-    if (sol_mode == 2 ) { add_one_disp_M(d_n[i], d_d[i]); } /* modal */
+      if (sol_mode == 2 ) { add_one_disp_M(d_n[i], d_d[i]); } /* modal */
 #endif
+    }
   }
 }
 
@@ -1802,12 +1820,12 @@ void geom_stiff()
     c = (x2-x1)/l ;
     
     tran_zero();
-    ke_to_keg(s, c) ;
+    ke_to_keg(s, c,0) ;
 
     N = 0.5 * (in_force(1, i, 3, 0) + in_force(1, i, 3, 3));
 
     geom_loc(type, (double)N, (double)l);
-    ke_to_keg(s, c) ;
+    ke_to_keg(s, c,0) ;
     for (k=0; k<6; k++)
     {
       ii = pvec[k] ;
@@ -2120,6 +2138,181 @@ int   mode;
 }
 #endif
 
+/** Computation of eigenvalues */
+int inv_iter(num_res)
+  int num_res;
+{
+  int rv = -1 ;
+  int i, j, k, jj ;
+  double om_top ;
+  double om_bot ;
+  double omega = 0.0 ;
+  double omega0 = 0.0 ;
+  double c, mval ;
+  double max_iter = 10 ;
+  double **eig_val = NULL ;
+
+
+  if ((eig_val = (double **)malloc(num_res*sizeof(double *))) == NULL)
+  {
+    fprintf(stderr,"Out of memory for eigen data!\n"); return(rv);
+  }
+  for (i=0; i<num_res; i++)
+  {
+    if ((eig_val[i] = (double *)malloc((K_size*sizeof(double)))) == NULL)
+    {
+      fprintf(stderr,"Out of memory for eigen data!\n"); return(rv);
+    }
+    for (j=0; j<K_size; j++) { eig_val[i][j] = 0.0 ; }
+  }
+
+  omega0  = 0.0 ;
+  omega   = 0.0 ;
+  for (i=0; i<K_size; i++) { u_val[i] = 1.0 ; }
+
+  for (k=0; k<K_size; k++) /* Mu = M*u ... initial z1 */
+  {
+    mval = 0.0 ;
+    for (j=0; j<K_sizes[k]; j++)
+    {
+      if  (K_cols[K_from[k]+j] < 0) {break;}
+      mval += M_val[K_from[k]+j] * u_val[K_cols[K_from[k]+j]];
+    }
+    Mu_val[k] = mval ;
+  }
+
+  for (j=1; j<=num_res; j++) /* main loop*/
+  {
+    /* initial approx. */
+    if (j > 1) {for(jj=0;jj<K_size;jj++){u_val[jj] *= rand()*1000;}}
+
+    for (i=0; i<max_iter; i++)
+    {
+      if (j > 1)
+      {
+        /* Gram-Schmidt: */
+        for(jj=0;jj<K_size;jj++)
+        {
+          F_val[jj] = 0.0;
+          Fr_val[jj] = 0.0;
+          Mu_val[jj] = 0.0;
+        }
+        for (k=0; k<K_size; k++) /* Mu = M*u ... initial z1 */
+        {
+          mval = 0.0 ;
+          for (jj=0; jj<K_sizes[k]; jj++)
+          {
+            if  (K_cols[K_from[k]+jj] < 0) {break;}
+            mval += M_val[K_from[k]+jj] * u_val[K_cols[K_from[k]+jj]];
+          }
+          Mu_val[k] = mval ;
+        }
+        for (jj=0; jj<(j-1); jj++)
+        {
+          c = 0.0 ;
+          for (k=0; k<K_size; k++) { c += Mu_val[i]*eig_val[jj][k] ; }
+          for (k=0; k<K_size; k++) { Fr_val[k] += (c*eig_val[jj][k]) ; }
+        }
+        for (k=0; k<K_size; k++)
+        {
+          F_val[k] = u_val[k] - Fr_val[k] ;
+          Mu_val[k] = 0.0 ;
+        }
+        for (k=0; k<K_size; k++) /* Mu = M*F ... z1 for j>=2 */
+        {
+          mval = 0.0 ;
+          for (jj=0; jj<K_sizes[k]; jj++)
+          {
+            if  (K_cols[K_from[k]+jj] < 0) {break;}
+            mval += M_val[K_from[k]+jj] * F_val[K_cols[K_from[k]+jj]];
+          }
+          Mu_val[k] = mval ;
+        }
+      }
+      for (k=0; k<K_size; k++) /* switch data for solve_eqs: Mu -> F */
+      {
+        F_val[k]  = mval ;
+        F_val[k]  = Mu_val[k] ;
+        Mu_val[k] = mval ;
+      }
+      solve_eqs(); /* equation solver*/
+      for (k=0; k<K_size; k++) /* switch data for solve_eqs F -> Mu */
+      {
+        F_val[k]  = mval ;
+        F_val[k]  = Mu_val[k] ;
+        Mu_val[k] = mval ;
+      }
+
+      for (k=0; k<K_size; k++) /* Mu = uu (eig_x) */
+      {
+        mval = 0.0 ;
+        for (jj=0; jj<K_sizes[k]; jj++)
+        {
+          if  (K_cols[K_from[k]+jj] < 0) {break;}
+          mval += M_val[K_from[k]+jj] * u_val[K_cols[K_from[k]+jj]];
+        }
+        uu_val[k] = mval ;
+      }
+      for (k=0; k<K_size; k++) { om_top += u_val[k]*Mu_val[k] ; }
+      for (k=0; k<K_size; k++) { om_bot += u_val[k]*uu_val[k] ; }
+      if (fabs(om_bot) <(1e-8))
+      {
+        fprintf(stderr,"\nInverse iteration failed!\n");
+        rv = -1;
+        goto memFree;
+      }
+      omega = om_top / om_bot ; /* eigenvalue */
+      printf("OMEGA: %e\n",omega);
+
+      for(jj=0;jj<K_size;jj++) {Mu_val[jj]=(uu_val[jj]/sqrt(om_bot)); } /* z(k+1) */
+
+      /* eigenvector (u): */
+      for (k=0; k<K_size; k++) /* switch data for solve_eqs: Mu -> F */
+      {
+        F_val[k]  = mval ;
+        F_val[k]  = Mu_val[k] ;
+        Mu_val[k] = mval ;
+      }
+      solve_eqs(); /* equation solver*/
+      for (k=0; k<K_size; k++) /* switch data for solve_eqs F -> Mu */
+      {
+        F_val[k]  = mval ;
+        F_val[k]  = Mu_val[k] ;
+        Mu_val[k] = mval ;
+      }
+
+      if (i > 0)
+      {
+        if ((fabs(omega - omega0)/omega) <= (pow(10,(-2.0*0.01))))
+        {
+          fprintf(stderr," Eigenvalue [%i]: %f (in iteration %i)\n",j,
+              sqrt(fabs(omega))/(2.0*3.141592),i+1);
+          rv = 0 ; /* we are converged */
+          break ;
+        }
+      }
+      omega0 = omega ;
+    }
+    if (rv != 0)
+    {
+      fprintf(stderr," Computation of eigenvalue [%i] failed\n",j);
+      goto memFree;
+    }
+    /* prepare next Gram-Schmidt: */
+    for (k=0; k<K_size; k++) { eig_val[j-1][k] = u_val[k] ; }
+  }
+
+  /* TODO: some savings of results... */
+
+memFree:
+  for (i=0; i<num_res; i++)
+  {
+    free(eig_val[i]); eig_val[i] = NULL ;
+  }
+  free(eig_val); eig_val = NULL ;
+  return(rv) ;
+}
+
 #ifndef GR
 int main(argc, argv)
 int argc ;
@@ -2259,8 +2452,10 @@ char *argv[];
     return(-1);
   }
 
+#ifdef FREEROT
 	if (sol_mode == 0) /* linear solver */
 	{
+#endif
   	stiff(); 
   	disps_and_loads();
 
@@ -2291,11 +2486,33 @@ char *argv[];
     	gfx_results(fp); 
     	fclose(fp);
   	}
+#ifdef FREEROT
 	}
 	else /* eigenvalues solver */
 	{
-		/* TODO */
+    if (sol_mode == 1) /* linear stability */
+    {
+  	  fprintf(stderr,"\nSolution (linear stability): \n");
+  	  stiff(); 
+  	  disps_and_loads();
+  	  solve_eqs();
+      geom_stiff();
+
+      inv_iter(1) ; /* one is enough */
+		  /* TODO */
+  	  fprintf(stderr,"End of solution. \n");
+    }
+    else /* sol_mode == 2, modal analysis */
+    {
+  	  fprintf(stderr,"\nSolution (modal analysis): \n");
+  	  stiff(); 
+  	  disps_and_loads();
+      inv_iter(2) ;
+      /* TODO */
+  	  fprintf(stderr,"End of solution. \n");
+    }
 	}
+#endif
 
   free_sol_data();
   free_data();
