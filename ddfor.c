@@ -1802,12 +1802,22 @@ void geom_stiff()
 {
 #ifdef FREEROT /* used only with freerot code! */
   int i, j, k, ii, jj, m ;
-  float x1,y1, x2,y2, l, s, c, N ;
+  float x1,y1, x2,y2, l, s, c, fval ;
+  double N ;
 
   if (sol_mode != 1) return;
 
+
   for (i=0; i<n_elems; i++)
   {
+    e_frotv(i);
+    for (j=0; j<3; j++)
+    {
+      ueg[j]   = u_val[pvec[j]-1];
+      ueg[j+3] = u_val[pvec[j+3]-1];
+printf("U[%i] %e %e\n",j,ueg[j],ueg[j+3]);
+    }
+
     for (m=0; m<6; m++) {fe[m] = 0.0 ; feg[m]=0.0;}
     x1 = x_i[n1[i]-1] ;
     y1 = y_i[n1[i]-1] ;
@@ -1820,9 +1830,19 @@ void geom_stiff()
     c = (x2-x1)/l ;
     
     tran_zero();
-    ke_to_keg(s, c,0) ;
+    u_to_ue(s,c);
+    stiff_loc(type[i], E[i], A[i], I[i], (double)l) ;
+    /* compute forces kn nodes: */
+    for (k=0; k<6; k++)
+    {
+      fval = 0.0 ;
+      for (j=0; j<6; j++) { fval += ke[k][j] * ue[j] ; }
+      fe[k] -= fval ;
+printf("Fe[%i]=%f\n",k,fe[k]);
+    }
 
-    N = 0.5 * (in_force(1, i, 3, 0) + in_force(1, i, 3, 3));
+    N = (fe[0] + fe[4]) ;
+printf(" DEBUG N[%i] = %e\n",i+1,N);
 
     geom_loc(type, (double)N, (double)l);
     ke_to_keg(s, c,0) ;
@@ -2231,14 +2251,14 @@ int inv_iter(num_res)
       }
       for (k=0; k<K_size; k++) /* switch data for solve_eqs: Mu -> F */
       {
-        F_val[k]  = mval ;
+        mval = F_val[k] ;
         F_val[k]  = Mu_val[k] ;
         Mu_val[k] = mval ;
       }
       solve_eqs(); /* equation solver*/
       for (k=0; k<K_size; k++) /* switch data for solve_eqs F -> Mu */
       {
-        F_val[k]  = mval ;
+        mval = F_val[k] ;
         F_val[k]  = Mu_val[k] ;
         Mu_val[k] = mval ;
       }
@@ -2269,17 +2289,31 @@ int inv_iter(num_res)
       /* eigenvector (u): */
       for (k=0; k<K_size; k++) /* switch data for solve_eqs: Mu -> F */
       {
-        F_val[k]  = mval ;
+        mval = F_val[k]  ;
         F_val[k]  = Mu_val[k] ;
         Mu_val[k] = mval ;
       }
+      for (k=0; k<K_len; k++) /* switch data for solve_eqs: M -> K */
+      {
+        mval     = K_val[k] ;
+        K_val[k] = M_val[k] ;
+        M_val[k] = mval ;
+      }
+
       solve_eqs(); /* equation solver*/
       for (k=0; k<K_size; k++) /* switch data for solve_eqs F -> Mu */
       {
-        F_val[k]  = mval ;
+        mval = F_val[k] ;
         F_val[k]  = Mu_val[k] ;
         Mu_val[k] = mval ;
       }
+      for (k=0; k<K_len; k++) /* switch data for solve_eqs: K -> M */
+      {
+        mval     = K_val[k] ;
+        K_val[k] = M_val[k] ;
+        M_val[k] = mval ;
+      }
+
 
       if (i > 0)
       {
@@ -2494,6 +2528,7 @@ char *argv[];
     {
   	  fprintf(stderr,"\nSolution (linear stability): \n");
   	  stiff(); 
+for (i=0; i<K_size; i++){fprintf(stderr,"u: %e\n",u_val[i]);}
   	  disps_and_loads();
   	  solve_eqs();
       geom_stiff();
