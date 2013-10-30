@@ -1285,7 +1285,7 @@ float val;
   int row ;
 
   row = (node-1)*3 + dir - 1 ;  /* note: -1 ? */
-  n = 3*n_nodes ;
+  n = K_size ;
 
   for (i=0; i<n; i++)
   {
@@ -1326,7 +1326,7 @@ int   dir;
   int row ;
 
   row = (node-1)*3 + dir - 1 ;  /* note: -1 ? */
-  n = 3*n_nodes ;
+  n = K_size;
 
   for (i=0; i<n; i++)
   {
@@ -1377,15 +1377,12 @@ void disps_and_loads()
     add_one_force(f_n[i], f_d[i], f_v[i]);
   }
 
-  if (sol_mode == 2)
+  for (i=0; i<n_disps; i++)
   {
-    for (i=0; i<n_disps; i++)
-    {
-      add_one_disp(d_n[i], d_d[i], d_v[i]);
+    add_one_disp(d_n[i], d_d[i], d_v[i]);
 #ifdef FREEROT
-      if (sol_mode == 2 ) { add_one_disp_M(d_n[i], d_d[i]); } /* modal */
+   if (sol_mode == 2 ) { add_one_disp_M(d_n[i], d_d[i]); } /* modal */
 #endif
-    }
   }
 }
 
@@ -1815,7 +1812,6 @@ void geom_stiff()
     {
       ueg[j]   = u_val[pvec[j]-1];
       ueg[j+3] = u_val[pvec[j+3]-1];
-printf("U[%i] %e %e\n",j,ueg[j],ueg[j+3]);
     }
 
     for (m=0; m<6; m++) {fe[m] = 0.0 ; feg[m]=0.0;}
@@ -1838,11 +1834,9 @@ printf("U[%i] %e %e\n",j,ueg[j],ueg[j+3]);
       fval = 0.0 ;
       for (j=0; j<6; j++) { fval += ke[k][j] * ue[j] ; }
       fe[k] -= fval ;
-printf("Fe[%i]=%f\n",k,fe[k]);
     }
 
-    N = (fe[0] + fe[4]) ;
-printf(" DEBUG N[%i] = %e\n",i+1,N);
+    N = 0.5*(fe[0] + fe[4]) ;
 
     geom_loc(type, (double)N, (double)l);
     ke_to_keg(s, c,0) ;
@@ -2528,9 +2522,9 @@ char *argv[];
     {
   	  fprintf(stderr,"\nSolution (linear stability): \n");
   	  stiff(); 
-for (i=0; i<K_size; i++){fprintf(stderr,"u: %e\n",u_val[i]);}
   	  disps_and_loads();
   	  solve_eqs();
+
       geom_stiff();
 
       inv_iter(1) ; /* one is enough */
