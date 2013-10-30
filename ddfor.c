@@ -23,6 +23,11 @@
 #include <stdio.h>
 #ifdef LARGE
 #include <stdlib.h>
+#ifdef UI
+#include <string.h>
+#endif
+#else
+#undef UI
 #endif
 #include <math.h>
 
@@ -373,6 +378,7 @@ FILE *fw ;
 }
 
 /** Write input data to file */
+#ifdef UI
 int write_idata(fw)
 FILE *fw ;
 {
@@ -403,6 +409,7 @@ FILE *fw ;
 
   return(0);
 }
+#endif
 
 /** free K,F */
 void free_sol_data()
@@ -1486,14 +1493,11 @@ int div;  /* number of divisions */
 int ppos; /* number of computed point (0...div)*/
 {
   double x1,x2,y1,y2 ;
-  double Na,Nb, Va,Vb, Ma,Mb, L, lenx, lenxx, na, nb, no, nt ;
+  double Na,Ma,Mb, L, lenx, lenxx, na, nb, no, nt ;
   double Xo = 0.0 ;
 
   Na = fe[0];
-  Va = fe[1];
   Ma = fe[2];
-  Nb = fe[3];
-  Vb = fe[4];
   Mb = fe[5];
 
   x1 = x_i[n1[epos]-1] ;
@@ -1835,15 +1839,8 @@ double *vx;
 double *vy;
 {
   double x1,x2,y1,y2,c,s ;
-  double Na,Nb, Va,Vb, Ma,Mb, L, lenx, lenxx ;
+  double L, lenx ;
   double val = 0.0 ;
-
-  Na = fe[0];
-  Va = fe[1];
-  Ma = fe[2];
-  Nb = fe[3];
-  Vb = fe[4];
-  Mb = fe[5];
 
   x1 = x_i[n1[epos]-1] ;
   y1 = y_i[n1[epos]-1] ;
@@ -1853,7 +1850,6 @@ double *vy;
 
   L = sqrt( (y2-y1)*(y2-y1) + (x2-x1)*(x2-x1) ) ;
   lenx  = L*((double)((double)ppos/(double)(div))) ;
-  lenxx = L - lenx ;
 
   s = (y2-y1)/L ;
   c = (x2-x1)/L ;
@@ -2133,6 +2129,10 @@ char *argv[];
   FILE *fo = NULL ;
   FILE *fd = NULL ;
   FILE *fp = NULL ;
+#ifdef UI
+	char  name[16] ;
+	int   i ;
+#endif
 
   fprintf(stderr,"\nDDFOR 1.0.5: direct stiffness method solver for statics of 2D frames.\n");
   fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
@@ -2147,6 +2147,25 @@ char *argv[];
       fprintf(stderr,"\nProgram terminated!\n");
       exit(-1);
     }
+		else
+		{
+			for (i=0; i<16; i++){name[i] = '\0';}
+			fprintf(stderr,"\nName of file to save input (0 to skip):\n");
+			if (fscanf(stdin,"%15s", name) > 0)
+			{
+				if (strlen(name) > 0)
+				{
+					if ((name[0]!=' ')&&(name[0]!='\n')&&(name[0] !='0'))
+					{
+    				if ((fw=fopen(name,"w")) != NULL)
+						{
+							write_idata(fw);
+							fclose(fw);
+						}
+					}
+				}
+			}
+		}
 #else
     fprintf(stderr,"No input data file!\n");
     return(-1);
@@ -2234,44 +2253,49 @@ char *argv[];
     }
   }
 
-
   if (alloc_kf() != 0 )
   {
     free_data();
     return(-1);
   }
 
-  stiff(); 
-  disps_and_loads();
+	if (sol_mode == 0) /* linear solver */
+	{
+  	stiff(); 
+  	disps_and_loads();
 
-  fprintf(stderr,"\nSolution: \n");
-  solve_eqs();
-  fprintf(stderr,"End of solution. \n");
+  	fprintf(stderr,"\nSolution: \n");
+  	solve_eqs();
+  	fprintf(stderr,"End of solution. \n");
 
-  if (fo != NULL) 
-  { 
-    results(fo);
+  	if (fo != NULL) 
+  	{ 
+    	results(fo);
 #ifndef NO_PSEUDO_GFX
-    fprintf(fo,"\nScheme of structure with nodes numbers: \n\n");
-    pseudo_geom(fo, 0);
-    fprintf(fo,"\nElements numbers:\n\n");
-    pseudo_geom(fo, -1);
+    	fprintf(fo,"\nScheme of structure with nodes numbers: \n\n");
+    	pseudo_geom(fo, 0);
+    	fprintf(fo,"\nElements numbers:\n\n");
+    	pseudo_geom(fo, -1);
 #endif
-    fclose(fo);
-  }
+    	fclose(fo);
+  	}
 
-  if (fd != NULL) 
-  { 
-    eint_results(fd); 
-    fclose(fd);
-  }
+  	if (fd != NULL) 
+  	{ 
+    	eint_results(fd); 
+    	fclose(fd);
+  	}
 
-  if (fp != NULL) 
-  { 
-    gfx_results(fp); 
-    fclose(fp);
-  }
-
+  	if (fp != NULL) 
+  	{ 
+    	gfx_results(fp); 
+    	fclose(fp);
+  	}
+	}
+	else /* eigenvalues solver */
+	{
+		/* TODO */
+	}
 
   free_sol_data();
   free_data();
