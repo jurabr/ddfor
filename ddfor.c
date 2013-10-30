@@ -23,6 +23,11 @@
 #include <stdio.h>
 #ifdef LARGE
 #include <stdlib.h>
+#ifdef UI
+#include <string.h>
+#endif
+#else
+#undef UI
 #endif
 #include <math.h>
 
@@ -373,6 +378,7 @@ FILE *fw ;
 }
 
 /** Write input data to file */
+#ifdef UI
 int write_idata(fw)
 FILE *fw ;
 {
@@ -403,6 +409,7 @@ FILE *fw ;
 
   return(0);
 }
+#endif
 
 /** free K,F */
 void free_sol_data()
@@ -2075,6 +2082,10 @@ char *argv[];
   FILE *fo = NULL ;
   FILE *fd = NULL ;
   FILE *fp = NULL ;
+#ifdef UI
+	char  name[16] ;
+	int   i ;
+#endif
 
   fprintf(stderr,"\nDDFOR 1.0.5: direct stiffness method solver for statics of 2D frames.\n");
   fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
@@ -2089,6 +2100,25 @@ char *argv[];
       fprintf(stderr,"\nProgram terminated!\n");
       exit(-1);
     }
+		else
+		{
+			for (i=0; i<16; i++){name[i] = '\0';}
+			fprintf(stderr,"\nName of file to save input (0 to skip):\n");
+			if (fscanf(stdin,"%15s", name) > 0)
+			{
+				if (strlen(name) > 0)
+				{
+					if ((name[0]!=' ')&&(name[0]!='\n')&&(name[0] !='0'))
+					{
+    				if ((fw=fopen(name,"w")) != NULL)
+						{
+							write_idata(fw);
+							fclose(fw);
+						}
+					}
+				}
+			}
+		}
 #else
     fprintf(stderr,"No input data file!\n");
     return(-1);
