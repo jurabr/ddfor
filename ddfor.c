@@ -1445,14 +1445,11 @@ int div;  /* number of divisions */
 int ppos; /* number of computed point (0...div)*/
 {
   double x1,x2,y1,y2 ;
-  double Na,Nb, Va,Vb, Ma,Mb, L, lenx, lenxx, na, nb, no, nt ;
+  double Na,Ma,Mb, L, lenx, lenxx, na, nb, no, nt ;
   double Xo = 0.0 ;
 
   Na = fe[0];
-  Va = fe[1];
   Ma = fe[2];
-  Nb = fe[3];
-  Vb = fe[4];
   Mb = fe[5];
 
   x1 = x_i[n1[epos]-1] ;
@@ -1788,15 +1785,8 @@ double *vx;
 double *vy;
 {
   double x1,x2,y1,y2,c,s ;
-  double Na,Nb, Va,Vb, Ma,Mb, L, lenx, lenxx ;
+  double L, lenx ;
   double val = 0.0 ;
-
-  Na = fe[0];
-  Va = fe[1];
-  Ma = fe[2];
-  Nb = fe[3];
-  Vb = fe[4];
-  Mb = fe[5];
 
   x1 = x_i[n1[epos]-1] ;
   y1 = y_i[n1[epos]-1] ;
@@ -1806,7 +1796,6 @@ double *vy;
 
   L = sqrt( (y2-y1)*(y2-y1) + (x2-x1)*(x2-x1) ) ;
   lenx  = L*((double)((double)ppos/(double)(div))) ;
-  lenxx = L - lenx ;
 
   s = (y2-y1)/L ;
   c = (x2-x1)/L ;
@@ -2187,44 +2176,49 @@ char *argv[];
     }
   }
 
-
   if (alloc_kf() != 0 )
   {
     free_data();
     return(-1);
   }
 
-  stiff(); 
-  disps_and_loads();
+	if (sol_mode == 0) /* linear solver */
+	{
+  	stiff(); 
+  	disps_and_loads();
 
-  fprintf(stderr,"\nSolution: \n");
-  solve_eqs();
-  fprintf(stderr,"End of solution. \n");
+  	fprintf(stderr,"\nSolution: \n");
+  	solve_eqs();
+  	fprintf(stderr,"End of solution. \n");
 
-  if (fo != NULL) 
-  { 
-    results(fo);
+  	if (fo != NULL) 
+  	{ 
+    	results(fo);
 #ifndef NO_PSEUDO_GFX
-    fprintf(fo,"\nScheme of structure with nodes numbers: \n\n");
-    pseudo_geom(fo, 0);
-    fprintf(fo,"\nElements numbers:\n\n");
-    pseudo_geom(fo, -1);
+    	fprintf(fo,"\nScheme of structure with nodes numbers: \n\n");
+    	pseudo_geom(fo, 0);
+    	fprintf(fo,"\nElements numbers:\n\n");
+    	pseudo_geom(fo, -1);
 #endif
-    fclose(fo);
-  }
+    	fclose(fo);
+  	}
 
-  if (fd != NULL) 
-  { 
-    eint_results(fd); 
-    fclose(fd);
-  }
+  	if (fd != NULL) 
+  	{ 
+    	eint_results(fd); 
+    	fclose(fd);
+  	}
 
-  if (fp != NULL) 
-  { 
-    gfx_results(fp); 
-    fclose(fp);
-  }
-
+  	if (fp != NULL) 
+  	{ 
+    	gfx_results(fp); 
+    	fclose(fp);
+  	}
+	}
+	else /* eigenvalues solver */
+	{
+		/* TODO */
+	}
 
   free_sol_data();
   free_data();
