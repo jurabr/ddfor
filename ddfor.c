@@ -625,15 +625,15 @@ int alloc_kf()
   {
     if ((M_cols = (int *)malloc(K_len*sizeof(int))) == NULL) { goto memFree ; } 
     if ((M_val = (double *)malloc(K_len*sizeof(double))) == NULL) { goto memFree ; } 
-    if ((Mu_val = (double *)malloc(K_size*sizeof(double))) == NULL) { goto memFree ; } 
-    if ((Fr_val = (double *)malloc(K_size*sizeof(double))) == NULL) { goto memFree ; } 
-    if ((uu_val = (double *)malloc(K_size*sizeof(double))) == NULL) { goto memFree ; } 
+    if ((Mu_val = (double *)malloc(k_size*sizeof(double))) == NULL) { goto memFree ; } 
+    if ((Fr_val = (double *)malloc(k_size*sizeof(double))) == NULL) { goto memFree ; } 
+    if ((uu_val = (double *)malloc(k_size*sizeof(double))) == NULL) { goto memFree ; } 
     for (i=0; i<K_len; i++)
     {
       M_cols[i] = -1 ;
       M_val[i]  = 0.0 ;
     }
-    for (i=0; i<K_size; i++)
+    for (i=0; i<k_size; i++)
     {
       Mu_val[i] = 0.0 ;
       Fr_val[i] = 0.0 ;
@@ -924,12 +924,12 @@ double L ;
   ke[1][1] = 6.0 / 5.0 ;
   ke[1][2] = L / 10.0 ;
   ke[1][4] = -6.0 / 5.0 ;
-  ke[1][5] = -L / 10.0 ;
+  ke[1][5] = L / 10.0 ;
 
   ke[2][1] = L / 10.0 ;
   ke[2][2] = (2*L*L) / 15.0 ;
   ke[2][4] = -L / 10.0 ;
-  ke[2][5] = -(2*L*L) / 30.0 ;
+  ke[2][5] = -(L*L) / 30.0 ;
 
   ke[4][1] = -6.0 / 5.0 ;
   ke[4][2] = -L / 10.0 ;
@@ -937,9 +937,14 @@ double L ;
   ke[4][5] = -L / 10.0 ;
 
   ke[5][1] = L / 10.0 ;
-  ke[5][2] = -(2*L*L) / 30.0 ;
+  ke[5][2] = -(L*L) / 30.0 ;
   ke[5][4] = -L / 10.0 ;
   ke[5][5] = (2*L*L) / 15.0 ;
+
+  ke[0][0] = 1.0 ;
+  ke[0][3] = -1.0 ;
+  ke[3][0] = -1.0 ;
+  ke[3][3] = 1.0 ;
 
   for (i=0; i<6; i++)
   {
@@ -1380,10 +1385,14 @@ void disps_and_loads()
   for (i=0; i<n_disps; i++)
   {
     add_one_disp(d_n[i], d_d[i], d_v[i]);
-#ifdef FREEROT
-   if (sol_mode == 2 ) { add_one_disp_M(d_n[i], d_d[i]); } /* modal */
-#endif
   }
+
+#ifdef FREEROT
+  if (sol_mode > 0) 
+  {
+    for (i=0; i<n_disps; i++) { add_one_disp_M(d_n[i], d_d[i]); } 
+  }
+#endif
 }
 
 /** Frees all allocated data */
@@ -1836,8 +1845,7 @@ void geom_stiff()
       fe[k] -= fval ;
     }
 
-    N = 0.5*(fe[0] + fe[4]) ;
-
+    N = -0.5*(fe[0] + fe[4]) ; 
     geom_loc(type, (double)N, (double)l);
     ke_to_keg(s, c,0) ;
     for (k=0; k<6; k++)
@@ -1849,12 +1857,6 @@ void geom_stiff()
         md_M_add(ii, jj, keg[k][j]) ;
       }
     }
-  }
-
-  /* boundary conditions */
-  for (i=0; i<n_disps; i++)
-  {
-    add_one_disp_M(d_n[i], d_d[i]);
   }
 #endif
 }
@@ -2166,7 +2168,6 @@ int inv_iter(num_res)
   double max_iter = 10 ;
   double **eig_val = NULL ;
 
-
   if ((eig_val = (double **)malloc(num_res*sizeof(double *))) == NULL)
   {
     fprintf(stderr,"Out of memory for eigen data!\n"); return(rv);
@@ -2182,7 +2183,6 @@ int inv_iter(num_res)
 
   omega0  = 0.0 ;
   omega   = 0.0 ;
-  for (i=0; i<K_size; i++) { u_val[i] = 1.0 ; }
 
   for (k=0; k<K_size; k++) /* Mu = M*u ... initial z1 */
   {
@@ -2276,11 +2276,12 @@ int inv_iter(num_res)
         goto memFree;
       }
       omega = om_top / om_bot ; /* eigenvalue */
-      printf("OMEGA: %e\n",omega);
+      printf("OMEGA[%i]: %e\n",i+1,omega);
 
       for(jj=0;jj<K_size;jj++) {Mu_val[jj]=(uu_val[jj]/sqrt(om_bot)); } /* z(k+1) */
 
       /* eigenvector (u): */
+      for(jj=0;jj<K_size;jj++) {u_val[jj]=0.0; } 
       for (k=0; k<K_size; k++) /* switch data for solve_eqs: Mu -> F */
       {
         mval = F_val[k]  ;
@@ -2293,7 +2294,6 @@ int inv_iter(num_res)
         K_val[k] = M_val[k] ;
         M_val[k] = mval ;
       }
-
       solve_eqs(); /* equation solver*/
       for (k=0; k<K_size; k++) /* switch data for solve_eqs F -> Mu */
       {
@@ -2308,13 +2308,21 @@ int inv_iter(num_res)
         M_val[k] = mval ;
       }
 
-
       if (i > 0)
       {
         if ((fabs(omega - omega0)/omega) <= (pow(10,(-2.0*0.01))))
         {
-          fprintf(stderr," Eigenvalue [%i]: %f (in iteration %i)\n",j,
+          switch(sol_mode)
+          {
+            case 1:
+              fprintf(stderr," Eigenvalue [%i]: %f (in iteration %i)\n",j,
+              (fabs(omega)),i+1);
+              break;
+            case 2:
+              fprintf(stderr," Eigenvalue [%i]: %f (in iteration %i)\n",j,
               sqrt(fabs(omega))/(2.0*3.141592),i+1);
+              break;
+          }
           rv = 0 ; /* we are converged */
           break ;
         }
@@ -2524,8 +2532,15 @@ char *argv[];
   	  stiff(); 
   	  disps_and_loads();
   	  solve_eqs();
-
       geom_stiff();
+      for (i=0; i<K_len; i++) { K_val[i] = 0.0 ; }
+      for (i=0; i<K_size; i++) 
+      { 
+        F_val[i] = 0.0 ; 
+        u_val[i] = 1.0 ; 
+      }
+  	  stiff(); 
+  	  disps_and_loads();
 
       inv_iter(1) ; /* one is enough */
 		  /* TODO */
@@ -2535,6 +2550,7 @@ char *argv[];
     {
   	  fprintf(stderr,"\nSolution (modal analysis): \n");
   	  stiff(); 
+      for (i=0; i<K_size; i++) { u_val[i] = 1.0 ; }
   	  disps_and_loads();
       inv_iter(2) ;
       /* TODO */
