@@ -597,10 +597,9 @@ int alloc_kf()
       }
     }
   }
-#ifdef FREEROT
-  for (j=(3*n_nodes); j<k_size; j++)
+
+  for (j=(3*n_nodes); j<k_size; j++) /* free rotations */
     { K_sizes[j]=6; }
-#endif
 
   sum = 0 ;
 
@@ -825,62 +824,6 @@ double l ;
   ke[0][3] =( -tuh) ;
   ke[3][0] =( -tuh) ;
 
-
-#ifndef FREEROT
-  switch (type)
-  {
-    case 0: /* |--| */
-      ke[1][1] = (12.0*E*I)/(l*l*l) ;
-      ke[1][4] = (-12.0*E*I)/(l*l*l) ;
-      ke[4][1] = (-12.0*E*I)/(l*l*l) ;
-      ke[4][4] = (12.0*E*I)/(l*l*l) ;
-
-      ke[1][2] = (-6.0*E*I)/(l*l) ;
-      ke[1][5] = (-6.0*E*I)/(l*l) ;
-      ke[2][1] = (-6.0*E*I)/(l*l) ;
-      ke[2][4] = (6.0*E*I)/(l*l) ;
-
-      ke[4][2] = (6.0*E*I)/(l*l) ;
-      ke[4][5] = (6.0*E*I)/(l*l) ;
-      ke[5][1] = (-6.0*E*I)/(l*l) ;
-      ke[5][4] = (6.0*E*I)/(l*l) ;
-
-      ke[2][2] = (4.0*E*I)/(l) ;
-      ke[5][5] = (4.0*E*I)/(l) ;
-
-      ke[2][5] = (2.0*E*I)/(l) ;
-      ke[5][2] = (2.0*E*I)/(l) ;
-      break;
-    case 1: /* o--| */
-      ke[1][1] = (3.0*E*I)/(l*l*l) ;
-      ke[1][4] = (-3.0*E*I)/(l*l*l) ;
-      ke[1][5] = (-3.0*E*I)/(l*l) ;
-
-      ke[4][1] = (-3.0*E*I)/(l*l*l) ;
-      ke[4][4] = (3.0*E*I)/(l*l*l) ;
-      ke[4][5] = (3.0*E*I)/(l*l) ;
-
-      ke[5][1] = (-3.0*E*I)/(l*l) ;
-      ke[5][4] = (3.0*E*I)/(l*l) ;
-      ke[5][5] = (3.0*E*I)/(l) ;
-      break;
-    case 2: /* |--o */ 
-      ke[1][1] = (3.0*E*I)/(l*l*l) ;
-      ke[1][2] = (-3.0*E*I)/(l*l) ;
-      ke[1][4] = (-3.0*E*I)/(l*l*l) ;
-
-      ke[2][1] = (-3.0*E*I)/(l*l) ;
-      ke[2][2] = (3.0*E*I)/(l) ;
-      ke[2][4] = (3.0*E*I)/(l*l) ;
-
-      ke[4][1] = (-3.0*E*I)/(l*l*l) ;
-      ke[4][2] = (3.0*E*I)/(l*l) ;
-      ke[4][4] = (3.0*E*I)/(l*l*l) ;
-      break;
-    case 3: /* o--o .. nothing to do */
-      break;
-  }
-#else
   ke[1][1] = (12.0*E*I)/(l*l*l) ;
   ke[1][4] = (-12.0*E*I)/(l*l*l) ;
   ke[4][1] = (-12.0*E*I)/(l*l*l) ;
@@ -901,7 +844,6 @@ double l ;
 
   ke[2][5] = (2.0*E*I)/(l) ;
   ke[5][2] = (2.0*E*I)/(l) ;
-#endif
 }
 
 /** Local geometric stiffness matrix */
@@ -1142,47 +1084,12 @@ double va;
 double vb;
 double L;
 {
-#ifndef FREEROT
-  switch (type[epos])
-  {
-    case 0: /* |--| */
-            fe[0]+=(-(2.0*na+1.0*nb)*L)/6.0 ;
-            fe[1]+=(-(7.0*va+3.0*vb)*L)/20.0 ;
-            fe[2]+=((3.0*va+2.0*vb)*L*L)/60.0 ;
-            fe[3]+=(-(1.0*na+2.0*nb)*L)/6.0 ;
-            fe[4]+=(-(3.0*va+7.0*vb)*L)/20.0 ;
-            fe[5]+=(-(2.0*va+3.0*vb)*L*L)/60.0 ;
-            break ;
-    case 1: /* o--| */
-            fe[0]+=(-(2.0*na+1.0*nb)*L)/6.0 ;
-            fe[1]+=(-(4.0*va+11.0*vb)*L)/40.0 ;
-            fe[3]+=(-(1.0*na+2.0*nb)*L)/6.0 ;
-            fe[4]+=(-(16.0*va+9.0*vb)*L)/40.0 ;
-            fe[5]+=((8.0*va+7.0*vb)*L*L)/120.0 ;
-            break ;
-    case 2: /* |--o */
-            fe[0]+=(-(2.0*na+1.0*nb)*L)/6.0 ;
-            fe[1]+=(-(16.0*va+9.0*vb)*L)/40.0 ;
-            fe[3]+=(-(1.0*na+2.0*nb)*L)/6.0 ;
-            fe[2]+=((8.0*va+7.0*vb)*L*L)/120.0 ;
-            fe[4]+=(-(4.0*va+11.0*vb)*L)/40.0 ;
-            break ;
-    case 3: /* o--o */
-            fe[0]+=(-(2.0*na+1.0*nb)*L)/6.0 ;
-            fe[1]+=(-(7.0*va+3.0*vb)*L)/20.0 ;
-            fe[3]+=(-(1.0*na+2.0*nb)*L)/6.0 ;
-            fe[4]+=(-(3.0*va+7.0*vb)*L)/20.0 ;
-            break ;
-    default: return; break;
-  }
-#else
   fe[0]+=(-(2.0*na+1.0*nb)*L)/6.0 ;
   fe[1]+=(-(7.0*va+3.0*vb)*L)/20.0 ;
   fe[2]+=((3.0*va+2.0*vb)*L*L)/60.0 ;
   fe[3]+=(-(1.0*na+2.0*nb)*L)/6.0 ;
   fe[4]+=(-(3.0*va+7.0*vb)*L)/20.0 ;
   fe[5]+=(-(2.0*va+3.0*vb)*L*L)/60.0 ;
-#endif
 }
 
 /* computes stiffness matrix of the structure */
@@ -1228,23 +1135,6 @@ void stiff()
     ke_to_keg(s, c,1) ;
 
     /* localisation */
-#ifndef FREEROT
-    for (k=0; k<6; k++)
-    {
-      if (k <3) { ii = n1[i]*3 + k - 2 ; }
-      else      { ii = n2[i]*3 + k - 5 ; }
-
-      F_val[ii-1] += feg[k] ;
-  
-      for (j=0; j<6; j++)
-      {
-        if (j <3) { jj = n1[i]*3 + j - 2 ; }
-        else      { jj = n2[i]*3 + j - 5 ; }
-  
-        md_K_add(ii, jj, keg[k][j]) ;
-      }
-    }
-#else
     e_frotv(i, pvec);
     for (k=0; k<6; k++)
     {
@@ -1257,9 +1147,7 @@ void stiff()
         md_K_add(ii, jj, keg[k][j]) ;
       }
     }
-#endif
 
-#ifdef FREEROT /* used only with freerot code! */
     /* mass matrix */
     if (sol_mode == 2) /* modal */
     {
@@ -1276,7 +1164,6 @@ void stiff()
         }
       }
     }
-#endif
   }
 }
 
@@ -1387,12 +1274,10 @@ void disps_and_loads()
     add_one_disp(d_n[i], d_d[i], d_v[i]);
   }
 
-#ifdef FREEROT
-  if (sol_mode > 0) 
+  if (sol_mode > 0) /* freerot */
   {
     for (i=0; i<n_disps; i++) { add_one_disp_M(d_n[i], d_d[i]); } 
   }
-#endif
 }
 
 /** Frees all allocated data */
@@ -1579,20 +1464,12 @@ int epos ;
   }
     
   /* get initial stuff */
-#ifndef FREEROT
-  for (i=0; i<3; i++)
-  {
-    ueg[i]   = u_val[(3*(n1[epos]-1))+i];
-    ueg[i+3] = u_val[(3*(n2[epos]-1))+i];
-  }
-#else
   e_frotv(epos);
   for (i=0; i<3; i++)
   {
     ueg[i]   = u_val[pvec[i]-1];
     ueg[i+3] = u_val[pvec[i+3]-1];
   }
-#endif
 
   x1 = x_i[n1[epos]-1] ;
   y1 = y_i[n1[epos]-1] ;
@@ -1806,7 +1683,7 @@ FILE *fw;
 /* geometric stiffness matrix */
 void geom_stiff()
 {
-#ifdef FREEROT /* used only with freerot code! */
+#ifdef LARGE
   int i, j, k, ii, jj, m ;
   float x1,y1, x2,y2, l, s, c, fval ;
   double N ;
@@ -2488,7 +2365,7 @@ char *argv[];
     return(-1);
   }
 
-#ifdef FREEROT
+#ifdef LARGE
 	if (sol_mode == 0) /* linear solver */
 	{
 #endif
@@ -2522,7 +2399,7 @@ char *argv[];
     	gfx_results(fp); 
     	fclose(fp);
   	}
-#ifdef FREEROT
+#ifdef LARGE
 	}
 	else /* eigenvalues solver */
 	{
