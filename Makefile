@@ -4,10 +4,13 @@ DEBUG=-O0 -Wall -pedantic -DLARGE -DUI -g
 CFLAGS=$(DEBUG)
 LIBS=-lm
 
-all: ddfor
+all: ddfor aaem
 
 ddfor: ddfor.c
 	$(CC) $(CFLAGS) ddfor.c $(LIBS) -o $(@)
 
+aaem: aaem.c
+	$(CC) $(CFLAGS) aaem.c $(LIBS) -o $(@)
+
 clean:
-	-rm -f ddfor *.o core
+	-rm -f ddfor aaem *.o core
