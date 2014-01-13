@@ -39,13 +39,51 @@ double J_B3(int epos/*unused*/, double t, double t1, double E28)
 	return(1.0/E0+qs*log(1.0+psi*((pow(t1,-m)+alpha)*pow(t-t1,n)))+Cd);
 }
 
+/** Computes approximation of R(t,t1) for concrete */
+double R_B3(int epos/*unused*/, double t, double t1, double E28)
+{
+  double dt ;
+
+  dt = t - t1 ; /* time difference */
+
+  return(0.992/J_B3(epos,t,t1,E28)-((0.115/J_B3(epos,t,t-1.0,E28))  
+         *((J_B3(epos,dt,t1,E28)/J_B3(epos,t,dt,E28))-1.0)) );
+}
+
+/** Computes aging function for AAEM */
+double fi_AAEM(double epos, double t, double t_1, double E28, double E_t1)
+{
+  return(E_t1*J_B3(epos, t, t1, E28) - 1.0);
+}
+
+/** Computes creep function for AAEM */
+double ksi_AAEM(double epos, double t, double t_1, double E28, double E_t1)
+{
+  return( (E_t1 / (E_t1-R_B3(epos,t,t1,E28))) -
+          (1.0  / fi_AAEM(epos,t,t1,E_t1,E_t1)) );
+}
+
+/** Computes Age Adjusted Effective Modulus value */
+double E_AAEM(double epos, double t, double t_1, double E28, double E_t1)
+{
+  return(
+    E_t1/( 1.0+ksi_AAEM(epos,t,t1,E_t1,E_t1)*fi_AAEM(epos,t,t1,E_t1,E_t1)));
+}
+
+/** TESTING ROUTINES ----------------------------- */
+
 /** Testing routine for B3 */
 void test_B3(void)
 {
-	int i ;
+	int i  ;
+  double days ;
 
 	for (i=1; i<=10; i++)
-		fprintf(stdout,"%2i  %e\n",i*i,J_B3(i, (double)(i*i), 1.0/365.0, 30e9));
+  {
+    days = (double)(i*365) ; /* 1 year */
+		fprintf(stdout,"%3.0f %3.10e %3.10e\n",days,
+        J_B3(i, days, 28.0, 30e9), R_B3(i, days, 28.0, 30e9));
+  }
 }
 
 /** main routine: */
