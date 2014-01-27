@@ -26,11 +26,74 @@
 #include "stdlib.h"
 #include "math.h"
 
+
 /* INPUT DATA B3: */
 double E28 ;
 
 /* INPUT DATA for AAEM: */
 double t1, t ; /* studied times: in YEARS */
+
+/* *************************************** */
+
+/** External stuff for ddfor.c: */
+extern int    n_nodes ;
+extern int    n_elems ;
+extern int    n_disps ;
+extern int    n_nfors ;
+extern int    n_eload ;
+
+extern float *x_i ;
+extern float *y_i ;
+
+extern float *E ;
+extern float *A ;
+extern float *I ;
+extern float *rho ;
+extern int   *n1 ;
+extern int   *n2 ;
+extern int   *type ;
+
+extern int   *d_n ; /* node */
+extern int   *d_d ; /* direction 1=x 2=y 3=rot */
+extern float *d_v ; /* size */
+
+extern int   *f_n ; /* node */
+extern int   *f_d ; /* direction 1=fx 2=fy 3=m */
+extern float *f_v ; /* size */
+
+extern int   *l_e ; /* node */
+extern int   *l_d ; /* direction 1=x 2=y, 3=x global, 4=y global */
+extern float *l_v1 ; /* size at beginning */
+extern float *l_v2 ; /* size at end */
+
+/* solution variables: */
+extern double  *ke[] ;
+extern double  *keg[] ;
+extern double  *T[] ;
+extern double  fe[];
+extern double  feg[];
+extern double  ueg[];
+extern double  ue[];
+
+extern int    K_len    ;
+extern int   *K_sizes  ; /* lenghts of K's rows */
+extern int   *K_from   ;
+extern int   *K_cols   ;
+extern double *K_val   ;
+extern double *F_val   ;
+extern double *u_val   ;
+
+/** Reading of data from file */
+extern int read_data(FILE *fw);
+extern void free_sol_data();
+extern int alloc_kf();
+extern void free_data();
+extern void stiff();
+extern void disps_and_loads();
+extern int solve_eqs(); /* conjugate gradient solver */
+extern void results(FILE *fw);
+extern void eint_results(FILE *fw);
+extern void gfx_results(FILE *fw);
 
 
 /** Computes compliance function for B3 (no drying) */
@@ -99,6 +162,145 @@ void test_B3(void)
 		fprintf(stdout,"%3.0f %3.10e %3.10e\n",days,
         J_B3(i, days, 28.0, 30e9), R_B3(i, days, 28.0, 30e9));
   }
+}
+
+int aaem_frame(int argc, char *argv[])
+{
+  FILE *fw = NULL ;
+  FILE *fo = NULL ;
+  FILE *fd = NULL ;
+  FILE *fp = NULL ;
+
+  fprintf(stderr,"\nDDFOR/AAEM 0.1: time-dependent analysis of 2D concrete frames.\n");
+  fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
+
+  if (argc < 2)
+  {
+    /* standard input */
+    fprintf(stderr,"\nInteractive input not possible!\n");
+    fprintf(stderr,"Use: %s data_file!\n\n",argv[0]);
+    return(-1);
+  }
+  else
+  {
+    /* read from file */
+    if ((fw=fopen(argv[1],"r")) == NULL)
+    {
+      fprintf(stderr,"Failed to open input file!\n");
+      return(-1);
+    }
+    else
+    {
+      if (read_data(fw) != 0)
+      {
+        fprintf(stderr,"\nData input failed. Program terminated!\n");
+        exit(-1);
+      }
+      else
+      {
+        fclose(fw);
+      }
+    }
+  }
+
+  if (argc < 3)
+  {
+    /* standard output */
+    fo = stdout;
+  }
+  else
+  {
+    /* write to file */
+    if ((argv[2][0] != '0')&&(argv[2][0] != '-'))
+    {
+      if ((fo=fopen(argv[2],"w")) == NULL)
+      {
+        fprintf(stderr,"Failed to open output file!\n");
+        fo = stdout ;
+      }
+    } else {
+      fo = NULL ;
+    }
+  }
+
+  if (argc < 4)
+  {
+    /* no output */
+    fd = NULL;
+  }
+  else
+  {
+    if ((argv[3][0] != '0')&&(argv[3][0] != '-'))
+    {
+      /* write to file */
+      if ((fd=fopen(argv[3],"w")) == NULL)
+      {
+        fprintf(stderr,"Failed to open output file!\n");
+        fd = NULL ;
+      }
+    } else {
+      fd = NULL ;
+    }
+  }
+
+  if (argc < 5)
+  {
+    /* no output */
+    fp = NULL;
+  }
+  else
+  {
+    if ((argv[4][0] != '0')&&(argv[4][0] != '-'))
+    {
+      /* write to file */
+      if ((fp=fopen(argv[4],"w")) == NULL)
+      {
+        fprintf(stderr,"Failed to open gfx file!\n");
+        fp = NULL ;
+      }
+    } else {
+      fp = NULL ;
+    }
+  }
+
+  if (alloc_kf() != 0 )
+  {
+    free_data();
+    return(-1);
+  }
+
+  /* SOLUTION START -------------- */
+ 	stiff(); 
+  disps_and_loads();
+
+  fprintf(stderr,"\nSolution: \n");
+  solve_eqs();
+  fprintf(stderr,"End of solution. \n");
+  /* TODO AAEM here */
+  /* SOLUTION END ---------------- */
+
+    /* Outputs: */
+  	if (fo != NULL) 
+  	{ 
+    	results(fo);
+    	fclose(fo);
+  	}
+
+  	if (fd != NULL) 
+  	{ 
+    	eint_results(fd); 
+    	fclose(fd);
+  	}
+
+  	if (fp != NULL) 
+  	{ 
+    	gfx_results(fp); 
+    	fclose(fp);
+  	}
+
+  free_sol_data();
+  free_data();
+  return(0);
 }
 
 /** main routine: */
