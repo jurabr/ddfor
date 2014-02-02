@@ -274,9 +274,15 @@ int aaem_frame(int argc, char *argv[])
   disps_and_loads();
 
   fprintf(stderr,"\nSolution: \n");
-  solve_eqs();
+  solve_eqs(); /* first AAEM run */
   fprintf(stderr,"End of solution. \n");
-  /* TODO AAEM here */
+  /* TODO AAEM here:
+   * 0. save results 
+   * 1. load "t" time loads and solve them
+   * 2. compute delta epsilon" (du")
+   * 3. combine displacements and forces
+   */
+
   /* SOLUTION END ---------------- */
 
     /* Outputs: */
