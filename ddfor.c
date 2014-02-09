@@ -29,7 +29,7 @@
 #endif
 #include <math.h>
 
-int    sol_mode = 0 ; /* 0=statics, 1=stability, 2=modal */
+int    sol_mode = 0 ; /* 0=statics, 1=stability, 2=modal, 3=aaem */
 
 int    n_nodes = 0 ;
 int    n_elems = 0 ;
@@ -84,6 +84,8 @@ double *M_val    = NULL ;
 double *Mu_val    = NULL ;
 double *Fr_val    = NULL ;
 double *uu_val    = NULL ;
+double *EE      = NULL ; /* initial value for viscoelastic computations */
+double *E1      = NULL ; /* E(t1) for viscoelastic computations */
 
 double *M    = NULL ;
 double *r    = NULL ;
@@ -435,6 +437,11 @@ void free_sol_data()
     if (Mu_val !=NULL)free(Mu_val);
     if (Fr_val !=NULL)free(Fr_val);
     if (uu_val !=NULL)free(uu_val);
+    if (sol_mode == 3)
+    {
+      if (EE !=NULL)free(EE);
+      if (E1 !=NULL)free(E1);
+    }
   }
 }
 
@@ -637,6 +644,11 @@ int alloc_kf()
       Mu_val[i] = 0.0 ;
       Fr_val[i] = 0.0 ;
       uu_val[i] = 0.0 ;
+    }
+    if (sol_mode == 3)
+    {
+      if ((EE = (double *)malloc(n_elems*sizeof(double))) == NULL) { goto memFree ; } 
+      if ((E1 = (double *)malloc(n_elems*sizeof(double))) == NULL) { goto memFree ; } 
     }
   }
 

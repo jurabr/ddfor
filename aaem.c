@@ -36,6 +36,7 @@ double t1, t ; /* studied times: in YEARS */
 /* *************************************** */
 
 /** External stuff for ddfor.c: */
+extern int    sol_mode ; /* 0=statics, 1=stability, 2=modal, 3=aaem */
 extern int    n_nodes ;
 extern int    n_elems ;
 extern int    n_disps ;
@@ -76,12 +77,16 @@ extern double  ueg[];
 extern double  ue[];
 
 extern int    K_len    ;
-extern int   *K_sizes  ; /* lenghts of K's rows */
+extern int   *K_sizes  ; 
 extern int   *K_from   ;
 extern int   *K_cols   ;
 extern double *K_val   ;
 extern double *F_val   ;
 extern double *u_val   ;
+extern double *Fr_val  ;
+extern double *uu_val  ;
+extern double *EE      ; 
+extern double *E1      ; 
 
 /** Reading of data from file */
 extern int read_data(FILE *fw);
@@ -129,20 +134,20 @@ double R_B3(int epos/*unused*/, double t, double t1, double E28)
 }
 
 /** Computes aging function for AAEM */
-double fi_AAEM(double epos, double t, double t_1, double E28, double E_t1)
+double fi_AAEM(int epos, double t, double t_1, double E28, double E_t1)
 {
   return(E_t1*J_B3(epos, t, t1, E28) - 1.0);
 }
 
 /** Computes creep function for AAEM */
-double ksi_AAEM(double epos, double t, double t_1, double E28, double E_t1)
+double ksi_AAEM(int epos, double t, double t_1, double E28, double E_t1)
 {
   return( (E_t1 / (E_t1-R_B3(epos,t,t1,E28))) -
           (1.0  / fi_AAEM(epos,t,t1,E_t1,E_t1)) );
 }
 
 /** Computes Age Adjusted Effective Modulus value */
-double E_AAEM(double epos, double t, double t_1, double E28, double E_t1)
+double E_AAEM(int epos, double t, double t_1, double E28, double E_t1)
 {
   return(
     E_t1/( 1.0+ksi_AAEM(epos,t,t1,E_t1,E_t1)*fi_AAEM(epos,t,t1,E_t1,E_t1)));
@@ -164,12 +169,23 @@ void test_B3(void)
   }
 }
 
+/** ANALYSIS OF FRAMES --------------------------- */
+
+/** AAEM for 2D frames (uses DDFOR) */
 int aaem_frame(int argc, char *argv[])
 {
   FILE *fw = NULL ;
   FILE *fo = NULL ;
   FILE *fd = NULL ;
   FILE *fp = NULL ;
+  int   i ;
+  double t, t1 ;
+
+  /* TODO: replace testing data with user-changeable stuff: */
+  t1 = 28.0 ;      /* 28 days */
+  t  = 5.0*365.0 ; /* 5 years */
+
+  sol_mode = 3 ; /* AAEM: needed for data allocations */
 
   fprintf(stderr,"\nDDFOR/AAEM 0.1: time-dependent analysis of 2D concrete frames.\n");
   fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
@@ -270,19 +286,49 @@ int aaem_frame(int argc, char *argv[])
   }
 
   /* SOLUTION START -------------- */
- 	stiff(); 
-  disps_and_loads();
-
+  /* solution for initial time t1: */
   fprintf(stderr,"\nSolution: \n");
-  solve_eqs(); /* first AAEM run */
-  fprintf(stderr,"End of solution. \n");
-  /* TODO AAEM here:
-   * 0. save results 
-   * 1. load "t" time loads and solve them
-   * 2. compute delta epsilon" (du")
-   * 3. combine displacements and forces
-   */
+  for (i=0; i<n_elems; i++) 
+  { 
+    EE[i] = E[i] ; /* save initial E28 */
+    E[i] = E_AAEM(i, t, t1, EE[i], EE[i]) ; /* E1 */
+    E1[i] = E[i] ; /* save E1 */
+  } /* TODO: second EE[i] replace with time-dependent  function! */
+  
+  /* first AAEM run: */
+ 	stiff(); 
+  disps_and_loads(); /* only initial loads are here */
+  solve_eqs(); 
+  for (i=0; i<K_len; i++) { uu_val[i] = u_val[i] ; } /* results(t1) */
 
+  for (i=0; i<K_len; i++) /* clean previous data*/
+  {
+    K_val[i]  = 0.0 ;
+    F_val[i]  = 0.0 ;
+    u_val[i]  = 0.0 ;
+  }
+  
+  /* second AAEM run (for time "t") - 1st part */
+  for (i=0; i<n_elems; i++) /* prepare E" for given time */
+  {
+    E[i] = E_AAEM(i, t, t1, EE[i], E1[i]) ; /* E(t) */
+  } 
+  stiff(); 
+  disps_and_loads(); /* TODO: use t1 loads here!!! */
+  solve_eqs(); 
+  for (i=0; i<K_len; i++) { Fr_val[i] = u_val[i] ; } /* partial results(t) */
+
+  /* second AAEM run (for time "t") - 2nd part */
+  for (i=0; i<n_elems; i++) /* prepare E" */
+  {
+    E[i] = E1[i] / fi_AAEM(i,t,t1,EE[i],E1[i]) ;
+  } 
+  stiff(); 
+  disps_and_loads();  /* TODO: use t1 loads here!!! */
+  solve_eqs(); 
+  for (i=0; i<K_len; i++) { u_val[i] += Fr_val[i] ; } /* final results */
+
+  fprintf(stderr,"End of solution. \n");
   /* SOLUTION END ---------------- */
 
     /* Outputs: */

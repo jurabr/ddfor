@@ -1,0 +1,17 @@
+ddfor:
+- text-mode output for results
+- output of deformations for stability and dynamics
+- fix bug in higher eigenvalues (1st is OK but higher are not)
+- AAEM integration
+- Tk (?) output
+
+gr:
+- values for results
+- any form of graphical output (PostScript or something similar)
+- zooming
+
+aaem:
+- time data input
+- time dependent material data input
+- time dependent load data input
+- configuration of outputs
