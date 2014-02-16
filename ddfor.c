@@ -47,19 +47,23 @@ float *rho = NULL ;
 int   *n1 = NULL ;
 int   *n2 = NULL ;
 int   *type = NULL ;
+int   *e_g = NULL ; /* element group */
 
 int   *d_n = NULL ; /* node */
 int   *d_d = NULL ; /* direction 1=x 2=y 3=rot */
 float *d_v = NULL ; /* size */
+int   *d_g = NULL ; /* load group */
 
 int   *f_n = NULL ; /* node */
 int   *f_d = NULL ; /* direction 1=fx 2=fy 3=m */
 float *f_v = NULL ; /* size */
+int   *f_g = NULL ; /* load group */
 
 int   *l_e = NULL ; /* node */
 int   *l_d = NULL ; /* direction 1=x 2=y, 3=x global, 4=y global */
 float *l_v1 = NULL ; /* size at beginning */
 float *l_v2 = NULL ; /* size at end */
+int   *l_g  = NULL ; /* load group */
 
 /* solution variables: */
 double  ke[6][6] ;
@@ -197,6 +201,13 @@ FILE *fw ;
     fprintf(stderr,"Can't allocate types!\n");
     return(-2);
   }
+  if ((e_g=(int *)malloc(n_elems*sizeof(int))) == NULL)
+  {
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);free(type);
+    fprintf(stderr,"Can't allocate types!\n");
+    return(-2);
+  }
+
 
   /* read element data */
 #ifdef UI
@@ -204,8 +215,8 @@ FILE *fw ;
 #endif
   for (i=0; i<n_elems; i++)
   {
-    fscanf(fw,"%d %d %d %e %e %e %e",
-      &type[i],&n1[i],&n2[i],&E[i],&A[i],&I[i],&rho[i]) ;
+    fscanf(fw,"%d %d %d %e %e %e %e %d",
+      &type[i],&n1[i],&n2[i],&E[i],&A[i],&I[i],&rho[i],&e_g[i]) ;
   }
 #ifdef UI
   fprintf(stderr,"  Have %d elements.\n",n_elems);
@@ -220,31 +231,39 @@ FILE *fw ;
   fscanf(fw,"%d", &n_disps);
   if (n_disps <= 0)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);free(type);free(e_g);
     fprintf(stderr,"No supports!\n");
     return(-1);
   }
 
   if ((d_n=(int *)malloc(n_disps*sizeof(int))) == NULL)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);free(type);free(e_g);
     fprintf(stderr,"Can't allocate nodes for supports!\n");
     return(-2);
   }
   if ((d_d=(int *)malloc(n_disps*sizeof(int))) == NULL)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);free(type);free(e_g);
     free(d_n);
     fprintf(stderr,"Can't allocate types of supports!\n");
     return(-2);
   }
   if ((d_v=(float *)malloc(n_disps*sizeof(float))) == NULL)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);free(type);free(e_g);
     free(d_n);free(d_d);
     fprintf(stderr,"Can't allocate sizes of supports!\n");
     return(-2);
   }
+  if ((d_g=(int *)malloc(n_disps*sizeof(int))) == NULL)
+  {
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);free(type);free(e_g);
+    free(d_n);free(d_d);free(d_v);
+    fprintf(stderr,"Can't allocate load groups!\n");
+    return(-2);
+  }
+
   
   /* read supports data */
 #ifdef UI
@@ -252,7 +271,7 @@ FILE *fw ;
 #endif
   for (i=0; i<n_disps; i++)
   {
-    fscanf(fw,"%d %d %e",&d_n[i], &d_d[i], &d_v[i]) ;
+    fscanf(fw,"%d %d %e %d",&d_n[i], &d_d[i], &d_v[i], &d_g[i]) ;
   }
 #ifdef UI
   fprintf(stderr,"  Have %d supports.\n",n_disps);
@@ -274,27 +293,36 @@ FILE *fw ;
   {
   if ((f_n=(int *)malloc(n_nfors*sizeof(int))) == NULL)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
-    free(d_n);free(d_d);free(d_v);
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);free(type);free(e_g);
+    free(d_n);free(d_d);free(d_v);free(d_g);
     fprintf(stderr,"Can't allocate nodes for forces!\n");
     return(-2);
   }
   if ((f_d=(int *)malloc(n_nfors*sizeof(int))) == NULL)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
-    free(d_n);free(d_d);free(d_v);
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);free(type);free(e_g);
+    free(d_n);free(d_d);free(d_v);free(d_g);
     free(f_n);
     fprintf(stderr,"Can't allocate types of forces!\n");
     return(-2);
   }
   if ((f_v=(float *)malloc(n_nfors*sizeof(float))) == NULL)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
-    free(d_n);free(d_d);free(d_v);
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);free(type);free(e_g);
+    free(d_n);free(d_d);free(d_v);free(d_g);
     free(f_n);free(f_d);
     fprintf(stderr,"Can't allocate sizes of forces!\n");
     return(-2);
   }
+  if ((f_g=(int *)malloc(n_nfors*sizeof(int))) == NULL)
+  {
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);free(type);free(e_g);
+    free(d_n);free(d_d);free(d_v);free(d_g);
+    free(f_n);free(f_d);free(f_v);
+    fprintf(stderr,"Can't allocate load groups!\n");
+    return(-2);
+  }
+
   
   /* read forces data */
 #ifdef UI
@@ -302,7 +330,7 @@ FILE *fw ;
 #endif
   for (i=0; i<n_nfors; i++)
   {
-    fscanf(fw,"%d %d %e",&f_n[i], &f_d[i], &f_v[i]) ;
+    fscanf(fw,"%d %d %e %d",&f_n[i], &f_d[i], &f_v[i], &f_g[i]) ;
   }
 #ifdef UI
   fprintf(stderr,"  Have %d forces in nodes.\n",n_nfors);
@@ -325,7 +353,7 @@ FILE *fw ;
   {
   if ((l_e=(int *)malloc(n_eload*sizeof(int))) == NULL)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);free(type);free(e_g);
     free(d_n);free(d_d);free(d_v);
     free(f_n);free(f_d);free(f_v);
     fprintf(stderr,"Can't allocate elements for loads!\n");
@@ -333,32 +361,41 @@ FILE *fw ;
   }
   if ((l_d=(int *)malloc(n_eload*sizeof(int))) == NULL)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
-    free(d_n);free(d_d);free(d_v);
-    if (n_nfors > 0){ free(f_n);free(f_d);free(f_v);}
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);free(type);free(e_g);
+    free(d_n);free(d_d);free(d_v);free(d_g);
+    if (n_nfors > 0){ free(f_n);free(f_d);free(f_v);free(f_g);}
     free(l_e);
     fprintf(stderr,"Can't allocate types of loads!\n");
     return(-2);
   }
   if ((l_v1=(float *)malloc(n_eload*sizeof(float))) == NULL)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
-    free(d_n);free(d_d);free(d_v);
-    if (n_nfors > 0){ free(f_n);free(f_d);free(f_v);}
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);free(type);free(e_g);
+    free(d_n);free(d_d);free(d_v);free(d_g);
+    if (n_nfors > 0){ free(f_n);free(f_d);free(f_v);free(f_g);}
     free(l_e);free(l_d);
     fprintf(stderr,"Can't allocate sizes of loads!\n");
     return(-2);
   }
   if ((l_v2=(float *)malloc(n_eload*sizeof(float))) == NULL)
   {
-    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);
-    free(d_n);free(d_d);free(d_v);
-
-    if (n_nfors > 0){ free(f_n);free(f_d);free(f_v);}
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);free(type);free(e_g);
+    free(d_n);free(d_d);free(d_v);free(d_g);
+    if (n_nfors > 0){ free(f_n);free(f_d);free(f_v);free(f_g);}
     free(l_e);free(l_d);free(l_v1);
     fprintf(stderr,"Can't allocate sizes of loads!\n");
     return(-2);
   }
+  if ((l_g=(int *)malloc(n_eload*sizeof(int))) == NULL)
+  {
+    free(x_i); free(y_i); free(n1); free(n2);free(E);free(A);free(I);free(rho);free(type);free(e_g);
+    free(d_n);free(d_d);free(d_v);free(d_g);
+    if (n_nfors > 0){ free(f_n);free(f_d);free(f_v);free(f_g);}
+    free(l_e);free(l_d);free(l_v1);free(l_v2);
+    fprintf(stderr,"Can't allocate sizes of loads!\n");
+    return(-2);
+  }
+
   
   /* read element loads data */
 #ifdef UI
@@ -366,7 +403,7 @@ FILE *fw ;
 #endif
   for (i=0; i<n_eload; i++)
   {
-    fscanf(fw,"%d %d %e %e",&l_e[i], &l_d[i], &l_v1[i], &l_v2[i]) ;
+    fscanf(fw,"%d %d %e %e %d",&l_e[i], &l_d[i], &l_v1[i], &l_v2[i],&l_g[i]) ;
   }
 #ifdef UI
   fprintf(stderr,"  Have %d element loads.\n",n_eload);
@@ -394,21 +431,21 @@ FILE *fw ;
   fprintf(fw,"%d\n", n_elems);
   for (i=0; i<n_elems; i++)
   {
-    fprintf(fw,"%d %d %d %e %e %e %e\n",
-      type[i],n1[i],n2[i],E[i],A[i],I[i],rho[i]) ;
+    fprintf(fw,"%d %d %d %e %e %e %e %d\n",
+      type[i],n1[i],n2[i],E[i],A[i],I[i],rho[i],e_g[i]) ;
   }
 
   fprintf(fw,"%d\n", n_disps);
   for (i=0; i<n_disps; i++)
-  { fprintf(fw,"%d %d %e\n",d_n[i], d_d[i], d_v[i]) ; }
+  { fprintf(fw,"%d %d %e %d\n",d_n[i], d_d[i], d_v[i], d_g[i]) ; }
 
   fprintf(fw,"%d\n", n_nfors);
   for (i=0; i<n_nfors; i++)
-  { fprintf(fw,"%d %d %e\n",f_n[i], f_d[i], f_v[i]) ; }
+  { fprintf(fw,"%d %d %e %d\n",f_n[i], f_d[i], f_v[i], f_g[i]) ; }
 
   fprintf(fw,"%d\n", n_eload);
   for (i=0; i<n_eload; i++)
-  { fprintf(fw,"%d %d %e %e\n",l_e[i], l_d[i], l_v1[i], l_v2[i]) ; }
+  { fprintf(fw,"%d %d %e %e %d\n",l_e[i], l_d[i], l_v1[i], l_v2[i], l_g[i]) ; }
 
   return(0);
 }
@@ -1301,19 +1338,19 @@ void free_data()
   }
   if (n_elems > 0)
   {
-    free(n1); free(n2);free(E);free(A);free(I);free(rho);
+    free(n1); free(n2);free(E);free(A);free(I);free(rho);free(type);free(e_g);
   }
   if (n_disps > 0)
   {
-    free(d_n);free(d_d);free(d_v);
+    free(d_n);free(d_d);free(d_v);free(d_g);
   }
   if (n_nfors > 0)
   {
-    free(f_n);free(f_d);free(f_v);
+    free(f_n);free(f_d);free(f_v);free(f_g);
   }
   if (n_eload > 0)
   {
-    free(l_e);free(l_d);free(l_v1);free(l_v2);
+    free(l_e);free(l_d);free(l_v1);free(l_v2);free(l_g);
   }
   if (K_nfree > 0)
   {
