@@ -187,7 +187,7 @@ int aaem_frame(int argc, char *argv[])
 
   sol_mode = 3 ; /* AAEM: needed for data allocations */
 
-  fprintf(stderr,"\nDDFOR/AAEM 0.1: time-dependent analysis of 2D concrete frames.\n");
+  fprintf(stderr,"\nDDFOR/AAEM 0.2.0: time-dependent analysis of 2D concrete frames.\n");
   fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
 
   if (argc < 2)

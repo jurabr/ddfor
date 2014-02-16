@@ -2303,7 +2303,7 @@ char *argv[];
 	int   i ;
 #endif
 
-  fprintf(stderr,"\nDDFOR 1.0.5: direct stiffness method solver for statics of 2D frames.\n");
+  fprintf(stderr,"\nDDFOR 1.1.0: direct stiffness method solver for statics of 2D frames.\n");
   fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
 
   if (argc < 2)

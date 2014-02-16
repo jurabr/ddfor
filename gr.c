@@ -578,7 +578,7 @@ int main(int argc, char *argv[])
   FILE *fw = NULL ;
   int   c  = 0 ;
 
-  fprintf(stderr,"\nDDFOR/GFX 0.2.4: direct stiffness method solver for statics of 2D frames.\n");
+  fprintf(stderr,"\nDDFOR/GFX 0.2.5: direct stiffness method solver for statics of 2D frames.\n");
   fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
 
   /** normal program run: */
