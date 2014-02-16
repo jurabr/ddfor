@@ -1142,13 +1142,16 @@ double L;
 }
 
 /* computes stiffness matrix of the structure */
-void stiff()
+void stiff(eg, lc)
+int eg;
+int lc;
 {
   int i, j, k, ii, jj, m ;
   float x1,y1, x2,y2, l, s, c ;
 
   for (i=0; i<n_elems; i++)
   {
+    if ((e_g[i] > 0)||(e_g[i] != eg)) continue;
     for (m=0; m<6; m++) {fe[m] = 0.0 ; feg[m]=0.0;}
     x1 = x_i[n1[i]-1] ;
     y1 = y_i[n1[i]-1] ;
@@ -1166,6 +1169,7 @@ void stiff()
     /* loads on elements: */
     for (m=0; m<n_eload; m++)
     {
+      if ((l_g[i] > 0)||(l_g[i] != lc)) continue;
       if ((l_e[m]-1) == i)
       {
         switch (l_d[m])
@@ -1309,23 +1313,30 @@ float val;
   F_val[row] += val ; 
 }
 
-void disps_and_loads()
+void disps_and_loads(lc)
+int lc;
 {
   int i ;
 
   for (i=0; i<n_nfors; i++)
   {
+    if ((f_g[i] > 0)||(f_g[i] != lc)) continue;
     add_one_force(f_n[i], f_d[i], f_v[i]);
   }
 
   for (i=0; i<n_disps; i++)
   {
+    if ((d_g[i] > 0)||(d_g[i] != lc)) continue;
     add_one_disp(d_n[i], d_d[i], d_v[i]);
   }
 
-  if (sol_mode > 0) /* freerot */
+  if (sol_mode > 0) 
   {
-    for (i=0; i<n_disps; i++) { add_one_disp_M(d_n[i], d_d[i]); } 
+    for (i=0; i<n_disps; i++) 
+    { 
+      if ((d_g[i] > 0)||(d_g[i] != lc)) continue;
+      add_one_disp_M(d_n[i], d_d[i]); 
+    } 
   }
 }
 
@@ -1383,7 +1394,7 @@ double c ;
   }
 }
 
-/** Find all element load in give direction */
+/** Find all element load in given direction */
 void get_eloads(epos, dir, na, nb)
 int epos;
 int dir;
@@ -1405,7 +1416,7 @@ double *nb;
   }
 }
 
-/* element deformation computation:  */
+/* Element deformation computation:  */
 double in_def(e_type, L, q1, q2, x)
 int e_type;
 double L;
@@ -1731,7 +1742,8 @@ FILE *fw;
 }
 
 /* geometric stiffness matrix */
-void geom_stiff()
+void geom_stiff(eg)
+int eg;
 {
 #ifdef LARGE
   int i, j, k, ii, jj, m ;
@@ -1743,6 +1755,7 @@ void geom_stiff()
 
   for (i=0; i<n_elems; i++)
   {
+    if ((e_g[i] > 0)||(e_g[i] != eg)) continue;
     e_frotv(i);
     for (j=0; j<3; j++)
     {
@@ -2419,7 +2432,7 @@ char *argv[];
 	if (sol_mode == 0) /* linear solver */
 	{
 #endif
-  	stiff(); 
+  	stiff(0,0); 
   	disps_and_loads();
 
   	fprintf(stderr,"\nSolution: \n");
@@ -2456,18 +2469,18 @@ char *argv[];
     if (sol_mode == 1) /* linear stability */
     {
   	  fprintf(stderr,"\nSolution (linear stability): \n");
-  	  stiff(); 
-  	  disps_and_loads();
+  	  stiff(0,0); 
+  	  disps_and_loads(0);
   	  solve_eqs();
-      geom_stiff();
+      geom_stiff(0);
       for (i=0; i<K_len; i++) { K_val[i] = 0.0 ; }
       for (i=0; i<K_size; i++) 
       { 
         F_val[i] = 0.0 ; 
         u_val[i] = 1.0 ; 
       }
-  	  stiff(); 
-  	  disps_and_loads();
+  	  stiff(0,0); 
+  	  disps_and_loads(0);
 
       inv_iter(1) ; /* one is enough */
 		  /* TODO */
@@ -2476,9 +2489,9 @@ char *argv[];
     else /* sol_mode == 2, modal analysis */
     {
   	  fprintf(stderr,"\nSolution (modal analysis): \n");
-  	  stiff(); 
+  	  stiff(0,0); 
       for (i=0; i<K_size; i++) { u_val[i] = 1.0 ; }
-  	  disps_and_loads();
+  	  disps_and_loads(0);
       inv_iter(2) ;
       /* TODO */
   	  fprintf(stderr,"End of solution. \n");

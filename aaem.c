@@ -93,8 +93,8 @@ extern int read_data(FILE *fw);
 extern void free_sol_data();
 extern int alloc_kf();
 extern void free_data();
-extern void stiff();
-extern void disps_and_loads();
+extern void stiff(int eg, int lc);
+extern void disps_and_loads(int lc);
 extern int solve_eqs(); /* conjugate gradient solver */
 extern void results(FILE *fw);
 extern void eint_results(FILE *fw);
@@ -296,8 +296,8 @@ int aaem_frame(int argc, char *argv[])
   } /* TODO: second EE[i] replace with time-dependent  function! */
   
   /* first AAEM run: */
- 	stiff(); 
-  disps_and_loads(); /* only initial loads are here */
+ 	stiff(0,0); 
+  disps_and_loads(0); /* only initial loads are here */
   solve_eqs(); 
   for (i=0; i<K_len; i++) { uu_val[i] = u_val[i] ; } /* results(t1) */
 
@@ -313,8 +313,8 @@ int aaem_frame(int argc, char *argv[])
   {
     E[i] = E_AAEM(i, t, t1, EE[i], E1[i]) ; /* E(t) */
   } 
-  stiff(); 
-  disps_and_loads(); /* TODO: use t1 loads here!!! */
+  stiff(0,1); 
+  disps_and_loads(1); /* TODO: use t1 loads here!!! */
   solve_eqs(); 
   for (i=0; i<K_len; i++) { Fr_val[i] = u_val[i] ; } /* partial results(t) */
 
@@ -323,8 +323,8 @@ int aaem_frame(int argc, char *argv[])
   {
     E[i] = E1[i] / fi_AAEM(i,t,t1,EE[i],E1[i]) ;
   } 
-  stiff(); 
-  disps_and_loads();  /* TODO: use t1 loads here!!! */
+  stiff(0,1); 
+  disps_and_loads(1);  /* TODO: use t1 loads here!!! */
   solve_eqs(); 
   for (i=0; i<K_len; i++) { u_val[i] += Fr_val[i] ; } /* final results */
 

@@ -110,7 +110,7 @@ extern void md_K_add(int row, int col, float val);
 extern void one_eload(int epos, double na, double nb, double va, double vb, double L);
 
 /* computes stiffness matrix of the structure */
-extern void stiff();
+extern void stiff(int eg, int lc);
 
 /* supports */
 extern void add_one_disp(int node, int dir, float val);
@@ -118,7 +118,7 @@ extern void add_one_disp(int node, int dir, float val);
 /* forces */
 extern void add_one_force(int node, int dir, float val);
 
-extern void disps_and_loads();
+extern void disps_and_loads(int lc);
 
 /** Frees all allocated data */
 extern void free_data();
@@ -608,8 +608,8 @@ int main(int argc, char *argv[])
     return(-1);
   }
 
-  stiff(); 
-  disps_and_loads();
+  stiff(0,0); 
+  disps_and_loads(0);
 
   fprintf(stderr,"\nSolution: \n");
   solve_eqs();
