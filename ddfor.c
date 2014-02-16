@@ -1606,22 +1606,23 @@ FILE *fw;
   }
 
   fprintf(fw,"\nElements:\n");
-  fprintf(fw," Num Node1 Node2     E             A           I:\n");
+  fprintf(fw," Num Node1 Node2     E             A           I:            Grp:\n");
   for (i=0; i<n_elems; i++)
   {
     fprintf(fw," %3d   %3d   %3d %e %e %e ",i+1,n1[i],n2[i],E[i],A[i],I[i]);
     switch(type[i])
     {
-      case 0: fprintf(fw,"|--|\n");break;
-      case 1: fprintf(fw,"o--|\n");break;
-      case 2: fprintf(fw,"|--o\n");break;
-      case 3: fprintf(fw,"o--o\n");break;
-      default: fprintf(fw,"unknown!\n");break;
+      case 0: fprintf(fw,"|--|");break;
+      case 1: fprintf(fw,"o--|");break;
+      case 2: fprintf(fw,"|--o");break;
+      case 3: fprintf(fw,"o--o");break;
+      default: fprintf(fw,"unknown!");break;
     }
+    fprintf(fw," %2d\n",e_g[i]);
   }
 
   fprintf(fw,"\nSupports in nodes:\n");
-  fprintf(fw," Num Node Dir Size:\n");
+  fprintf(fw," Num Node Dir Size:        LC:\n");
   for (i=0; i<n_disps; i++)
   {
     fprintf(fw," %3d  %3d ",i+1, d_n[i]);
@@ -1632,11 +1633,11 @@ FILE *fw;
       case 3: fprintf(fw,"__^");break;
       default: fprintf(fw,"unknown!");break;
     }
-    fprintf(fw," %e\n",d_v[i]);
+    fprintf(fw," %e %3d\n",d_v[i],d_g[i]);
   }
 
   fprintf(fw,"\nLoads in nodes:\n");
-  fprintf(fw," Num Node Dir Size:\n");
+  fprintf(fw," Num Node Dir Size:           LC:\n");
   for (i=0; i<n_nfors; i++)
   {
     fprintf(fw," %3d  %3d ",i+1, f_n[i]);
@@ -1647,11 +1648,11 @@ FILE *fw;
       case 3: fprintf(fw,"__^");break;
       default: fprintf(fw,"unknown!");break;
     }
-    fprintf(fw," %e\n",f_v[i]);
+    fprintf(fw," %e %3d\n",f_v[i],f_g[i]);
   }
 
   fprintf(fw,"\nElement loads:\n");
-  fprintf(fw," Num Node Dir Sizes (start..end):\n");
+  fprintf(fw," Num Node Dir Sizes (start..end):         LC:\n");
   for (i=0; i<n_eload; i++)
   {
     fprintf(fw," %3d  %3d ",i+1, l_e[i]);
@@ -1661,7 +1662,7 @@ FILE *fw;
       case 2: fprintf(fw,"vvv");break;
       default: fprintf(fw,"unknown!");break;
     }
-    fprintf(fw," %e..%e\n",l_v1[i],l_v2[i]);
+    fprintf(fw," %e..%e %3d\n",l_v1[i],l_v2[i],l_g[i]);
   }
 
   fprintf(fw,"\nDEFORMATIONS:\n");
