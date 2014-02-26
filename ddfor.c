@@ -1151,7 +1151,7 @@ int lc;
 
   for (i=0; i<n_elems; i++)
   {
-    if ((e_g[i] > 0)||(e_g[i] != eg)) continue;
+    if ((e_g[i] > 0)&&(e_g[i] != eg)) continue;
     for (m=0; m<6; m++) {fe[m] = 0.0 ; feg[m]=0.0;}
     x1 = x_i[n1[i]-1] ;
     y1 = y_i[n1[i]-1] ;
@@ -1169,7 +1169,7 @@ int lc;
     /* loads on elements: */
     for (m=0; m<n_eload; m++)
     {
-      if ((l_g[i] > 0)||(l_g[i] != lc)) continue;
+      if ((l_g[i] != lc)) continue; /* only lc-th step is considered */
       if ((l_e[m]-1) == i)
       {
         switch (l_d[m])
@@ -1320,13 +1320,14 @@ int lc;
 
   for (i=0; i<n_nfors; i++)
   {
-    if ((f_g[i] > 0)||(f_g[i] != lc)) continue;
+    if ((f_g[i] != lc)) continue; /* only lc-th step is considered */
+
     add_one_force(f_n[i], f_d[i], f_v[i]);
   }
 
   for (i=0; i<n_disps; i++)
   {
-    if ((d_g[i] > 0)||(d_g[i] != lc)) continue;
+    if ((d_g[i] > 0)&&(d_g[i] != lc)) continue;
     add_one_disp(d_n[i], d_d[i], d_v[i]);
   }
 
@@ -2303,7 +2304,7 @@ char *argv[];
 	int   i ;
 #endif
 
-  fprintf(stderr,"\nDDFOR 1.1.0: direct stiffness method solver for statics of 2D frames.\n");
+  fprintf(stderr,"\nDDFOR 1.1.1: direct stiffness method solver for statics of 2D frames.\n");
   fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
 
   if (argc < 2)
@@ -2433,7 +2434,7 @@ char *argv[];
 	{
 #endif
   	stiff(0,0); 
-  	disps_and_loads();
+  	disps_and_loads(0);
 
   	fprintf(stderr,"\nSolution: \n");
   	solve_eqs();

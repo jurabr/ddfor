@@ -185,12 +185,12 @@ int aaem_frame(int argc, char *argv[])
   double t, t1 ;
 
   /* TODO: replace testing data with user-changeable stuff: */
-  t1 = 28.0 ;      /* 28 days */
-  t  = 5.0*365.0 ; /* 5 years */
+  t1 = 28.0 ;      /* 28 days : time when load is applied   */
+  t  = 5.0*365.0 ; /* 5 years : stdudied time               */
 
   sol_mode = 3 ; /* AAEM: needed for data allocations */
 
-  fprintf(stderr,"\nDDFOR/AAEM 0.2.0: time-dependent analysis of 2D concrete frames.\n");
+  fprintf(stderr,"\nDDFOR/AAEM 0.2.1: time-dependent analysis of 2D concrete frames.\n");
   fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
 
   if (argc < 2)
