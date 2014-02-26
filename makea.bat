@@ -1,3 +1,3 @@
 del aaem.exe
-pc/e/dLARGE aaem
+pc/e/dGR/dLARGE aaem
 rem lzexe aaem.exe
