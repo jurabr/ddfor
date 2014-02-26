@@ -332,7 +332,7 @@ int aaem_frame(int argc, char *argv[])
   stiff(0,1); 
   disps_and_loads(1);  /* TODO: use t1 loads here!!! */
   solve_eqs(); 
-  for (i=0; i<K_size; i++) { u_val[i] += Fr_val[i] ; } /* final results */
+  for (i=0; i<K_size; i++) { u_val[i] += (Fr_val[i] + uu_val[i]) ; } /* final results */
 
   fprintf(stderr,"End of solution. \n");
   /* SOLUTION END ---------------- */
