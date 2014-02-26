@@ -26,7 +26,6 @@
 #include "stdlib.h"
 #include "math.h"
 
-
 /* INPUT DATA B3: */
 double E28 ;
 
@@ -77,6 +76,7 @@ extern double  ueg[];
 extern double  ue[];
 
 extern int    K_len    ;
+extern int    K_size   ;
 extern int   *K_sizes  ; 
 extern int   *K_from   ;
 extern int   *K_cols   ;
@@ -134,20 +134,20 @@ double R_B3(int epos/*unused*/, double t, double t1, double E28)
 }
 
 /** Computes aging function for AAEM */
-double fi_AAEM(int epos, double t, double t_1, double E28, double E_t1)
+double fi_AAEM(int epos, double t, double t1, double E28, double E_t1)
 {
   return(E_t1*J_B3(epos, t, t1, E28) - 1.0);
 }
 
 /** Computes creep function for AAEM */
-double ksi_AAEM(int epos, double t, double t_1, double E28, double E_t1)
+double ksi_AAEM(int epos, double t, double t1, double E28, double E_t1)
 {
   return( (E_t1 / (E_t1-R_B3(epos,t,t1,E28))) -
           (1.0  / fi_AAEM(epos,t,t1,E_t1,E_t1)) );
 }
 
 /** Computes Age Adjusted Effective Modulus value */
-double E_AAEM(int epos, double t, double t_1, double E28, double E_t1)
+double E_AAEM(int epos, double t, double t1, double E28, double E_t1)
 {
   return(
     E_t1/( 1.0+ksi_AAEM(epos,t,t1,E_t1,E_t1)*fi_AAEM(epos,t,t1,E_t1,E_t1)));
@@ -161,11 +161,14 @@ void test_B3(void)
 	int i  ;
   double days ;
 
+  fprintf(stdout,"Just a B3 model test:\n");
 	for (i=1; i<=10; i++)
   {
     days = (double)(i*365) ; /* 1 year */
-		fprintf(stdout,"%3.0f %3.10e %3.10e\n",days,
-        J_B3(i, days, 28.0, 30e9), R_B3(i, days, 28.0, 30e9));
+		fprintf(stdout,"%3.0f %3.10e %3.10e fi=%e\n",days,
+        J_B3(i, days, 28.0, 30e9), R_B3(i, days, 28.0, 30e9),
+        fi_AAEM(i, days, 28.0, 30e9, 30e9)
+        );
   }
 }
 
@@ -299,11 +302,14 @@ int aaem_frame(int argc, char *argv[])
  	stiff(0,0); 
   disps_and_loads(0); /* only initial loads are here */
   solve_eqs(); 
-  for (i=0; i<K_len; i++) { uu_val[i] = u_val[i] ; } /* results(t1) */
+  for (i=0; i<K_size; i++) { uu_val[i] = u_val[i] ; } /* results(t1) */
 
   for (i=0; i<K_len; i++) /* clean previous data*/
   {
     K_val[i]  = 0.0 ;
+  }
+  for (i=0; i<K_size; i++) /* clean previous data*/
+  {
     F_val[i]  = 0.0 ;
     u_val[i]  = 0.0 ;
   }
@@ -316,7 +322,7 @@ int aaem_frame(int argc, char *argv[])
   stiff(0,1); 
   disps_and_loads(1); /* TODO: use t1 loads here!!! */
   solve_eqs(); 
-  for (i=0; i<K_len; i++) { Fr_val[i] = u_val[i] ; } /* partial results(t) */
+  for (i=0; i<K_size; i++) { Fr_val[i] = u_val[i] ; } /* partial results(t) */
 
   /* second AAEM run (for time "t") - 2nd part */
   for (i=0; i<n_elems; i++) /* prepare E" */
@@ -326,7 +332,7 @@ int aaem_frame(int argc, char *argv[])
   stiff(0,1); 
   disps_and_loads(1);  /* TODO: use t1 loads here!!! */
   solve_eqs(); 
-  for (i=0; i<K_len; i++) { u_val[i] += Fr_val[i] ; } /* final results */
+  for (i=0; i<K_size; i++) { u_val[i] += Fr_val[i] ; } /* final results */
 
   fprintf(stderr,"End of solution. \n");
   /* SOLUTION END ---------------- */
@@ -358,7 +364,14 @@ int aaem_frame(int argc, char *argv[])
 /** main routine: */
 int main(int argc, char *argv[])
 {
-	test_B3();
+  if (argc > 1)
+  {
+    return(aaem_frame(argc, argv));
+  }
+  else
+  {
+	  test_B3();
+  }
 	return(0);
 }
 

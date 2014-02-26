@@ -1,3 +1,3 @@
 del ddfor.exe
-pc/e/dGR/dUI/dLARGE ddfor
+pc/e/dUI/dLARGE ddfor
 rem lzexe ddfor.exe
