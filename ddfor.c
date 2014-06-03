@@ -2074,6 +2074,27 @@ int   mode;
   }
 
   /* plot symbols for supports */
+  for (j=0; j<n_disps; j++)
+  {
+    i = d_n[j]-1;
+    ii =  (int)((x_i[i]-min_x) * mult_x) + 1  ;
+    jj = size_y - ( (int)((y_i[i]-min_y) * mult_y) + 1 ) ;
+    if (mode != 0) 
+    { 
+       if (d_d[j]==1) fld[jj][ii+1] = '<' ; 
+       if (d_d[j]==2) fld[jj][ii] = 'A' ;
+       if (d_d[j]==3) 
+       {
+          if (fld[jj][ii] == 'A' )
+          {
+             fld[jj-1][ii] = 'A' ;
+             fld[jj][ii] = 'X'  ;
+           }
+           else  fld[jj][ii] = 'X' ;
+       }
+    }
+  } 
+ 
 
   /* plot data: */  
   fprintf(fw,"\n");
