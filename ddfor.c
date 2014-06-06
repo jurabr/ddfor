@@ -2073,7 +2073,7 @@ int   mode;
     }
   }
 
-  /* plot symbols for supports */
+  /* plot symbols for supports: "A"=uy, "<"=ux, "X"=rot */
   for (j=0; j<n_disps; j++)
   {
     i = d_n[j]-1;
@@ -2094,6 +2094,28 @@ int   mode;
        }
     }
   } 
+
+  /* plot symbols for forces */
+  for (j=0; j<n_nfors; j++)
+  {
+    i = f_n[j]-1;
+    ii =  (int)((x_i[i]-min_x) * mult_x) + 1  ;
+    jj = size_y - ( (int)((y_i[i]-min_y) * mult_y) + 1 ) ;
+    if (mode != 0) 
+    {
+      switch (f_d[j]) /* TODO: sizes, orientation */
+      {
+        case 1: fld[jj][ii] = '=' ;
+                fld[jj][ii+1] = '>' ;
+                break ;
+        case 2: fld[jj-1][ii] = '|'  ;
+                fld[jj][ii] = 'V' ;
+                break ;
+        case 3: fld[jj][ii] = 'M'  ;
+                break ;
+      }
+    }
+  }
  
 
   /* plot data: */  
@@ -2325,7 +2347,7 @@ char *argv[];
 	int   i ;
 #endif
 
-  fprintf(stderr,"\nDDFOR 1.1.1: direct stiffness method solver for statics of 2D frames.\n");
+  fprintf(stderr,"\nDDFOR 1.1.2: direct stiffness method solver for statics of 2D frames.\n");
   fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
 
   if (argc < 2)
