@@ -46,6 +46,32 @@ double i_torsion(int type, double b, double h)
 
 int main (int argc, char *argv[])
 {
+  int type ;
+  double b, h, it ;
+
+  if (argc <=1)
+  {
+    fprintf(stderr,"Torsion momen (It) computation. Use %s type b h.\n",argv[0]);
+    fprintf(stderr,"  Where: type is 0..circle, 1..rectangle \n");
+    fprintf(stderr,"      -          ---    -                \n");
+    fprintf(stderr,"     / \\        |   |   h               \n");
+    fprintf(stderr,"     \\ /        |   |   |               \n");
+    fprintf(stderr,"      -          ---    -                \n");
+    fprintf(stderr,"    |-b-|       |-b-|                    \n");
+    return(0);
+  }
+
+  if (argc > 1) { type = atoi(argv[1]) ; }
+  if (argc > 2) { b = atof(argv[2]) ; }
+  if (type > 0)
+  {
+    if (argc > 3) { h=atof(argv[3]) ; }
+  }
+  else h = 0.0 ;
+
+  it = i_torsion(type, b, h);
+  fprintf(stdout,"It = %e\n", it);
+  
   return(0);
 }
 
