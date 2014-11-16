@@ -4,7 +4,7 @@ DEBUG=-O0 -Wall -pedantic -DLARGE -DUI -g
 CFLAGS=$(DEBUG)
 LIBS=-lm
 
-all: ddfor aaem bipe bbet
+all: ddfor aaem bipe bbet btor
 
 ddfor: ddfor.c
 	$(CC) $(CFLAGS) ddfor.c $(LIBS) -o $(@)
@@ -24,7 +24,10 @@ bipe: bipe.c
 bbet: bbet.c
 	$(CC) $(CFLAGS) bbet.c $(LIBS) -o $(@)
 
+btor: btor.c
+	$(CC) $(CFLAGS) btor.c $(LIBS) -o $(@)
+
 
 
 clean:
-	-rm -f ddfor aaem bipe bbet *.o core
+	-rm -f ddfor aaem bipe bbet btor *.o core
