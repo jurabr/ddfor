@@ -50,7 +50,7 @@ int assess_bet(double M, double b, double h, double R)
   }
 
   z = 0.85 * d ;
-  A = M / (z*fy) ; /* design area */
+  A = 1e3*M / (z*fy) ; /* design area */
   n = A / (0.25*3.14*R*R*0.000001);
 
 #if DEVEL
