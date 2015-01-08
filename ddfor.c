@@ -211,7 +211,7 @@ FILE *fw ;
 
   /* read element data */
 #ifdef UI
-  fprintf(stderr,"Element data (type node1 node2 E A I dens):\n");
+  fprintf(stderr,"Element data (type node1 node2 E A I dens grp):\n");
 #endif
   for (i=0; i<n_elems; i++)
   {
@@ -267,7 +267,7 @@ FILE *fw ;
   
   /* read supports data */
 #ifdef UI
-  fprintf(stderr,"Supports data (node direction size):\n");
+  fprintf(stderr,"Supports data (node direction size grp):\n");
 #endif
   for (i=0; i<n_disps; i++)
   {
@@ -326,7 +326,7 @@ FILE *fw ;
   
   /* read forces data */
 #ifdef UI
-  fprintf(stderr,"Forces in nodes data (node direction size):\n");
+  fprintf(stderr,"Forces in nodes data (node direction size grp):\n");
 #endif
   for (i=0; i<n_nfors; i++)
   {
@@ -399,7 +399,7 @@ FILE *fw ;
   
   /* read element loads data */
 #ifdef UI
-  fprintf(stderr,"Element loads (element direction startsize endsize):\n");
+  fprintf(stderr,"Element loads (element direction startsize endsize grp):\n");
 #endif
   for (i=0; i<n_eload; i++)
   {
