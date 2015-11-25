@@ -74,16 +74,12 @@ double  feg[6];
 double  ueg[6];
 double  ue[6];
 
-int    K_len    = 0 ;
-int    K_size   = 0 ;
-int   *K_sizes  = NULL ; /* lenghts of K's rows */
-int   *K_from   = NULL ;
-int   *K_cols   = NULL ;
+int    K_len    = 0 ; /* actual size of K and M matrices */
+int    K_size   = 0 ; /* number of unknowns              */
 double *K_val    = NULL ;
 double *F_val    = NULL ;
 double *u_val    = NULL ;
 
-int   *M_cols   = NULL ; /* Kg or M matrix */
 double *M_val    = NULL ;
 double *Mu_val    = NULL ;
 double *Fr_val    = NULL ;
@@ -456,20 +452,10 @@ void free_sol_data()
 {
   if (F_val != NULL )free(F_val);
   if (u_val != NULL )free(u_val);
-  if (K_sizes != NULL )free(K_sizes);
-  if (K_from != NULL )free(K_from);
-  if (K_cols != NULL )free(K_cols);
   if (K_val != NULL )free(K_val);
-
-  if (M != NULL )free(M);
-  if (r != NULL )free(r);
-  if (z != NULL )free(z);
-  if (p != NULL )free(p);
-  if (q != NULL )free(q);
 
   if (sol_mode > 0)
   {
-    if (M_cols!=NULL)free(M_cols);
     if (M_val !=NULL)free(M_val);
     if (Mu_val !=NULL)free(Mu_val);
     if (Fr_val !=NULL)free(Fr_val);
@@ -590,93 +576,36 @@ void e_frotv(epos)
 /* Allocates space for linear system */
 int alloc_kf()
 {
-  int i,j, sum;
-  int k_size = 0 ;
+  int i ;
+  int n = 0 ;
 
   comp_frot() ; /* computation of free rotations */
 
-  k_size = 3*n_nodes + K_nfree ;
+  n  = 3*n_nodes + K_nfree ;
+  K_len = (n*n - n)/2 + n ;
+  K_size = n ;
 
-  if ((K_sizes = (int *)malloc(k_size*sizeof(int)))   == NULL) { goto memFree;}
-  if ((K_from  = (int *)malloc(k_size*sizeof(int)))   == NULL) {goto memFree;} 
-  if ((F_val = (double *)malloc(k_size*sizeof(double))) == NULL) {goto memFree;} 
-  if ((u_val = (double *)malloc(k_size*sizeof(double))) == NULL) {goto memFree;} 
 
-  if ((M   = (double *)malloc(k_size*sizeof(double))) == NULL) {goto memFree;} 
-  if ((r   = (double *)malloc(k_size*sizeof(double))) == NULL) {goto memFree;} 
-  if ((z   = (double *)malloc(k_size*sizeof(double))) == NULL) {goto memFree;} 
-  if ((p   = (double *)malloc(k_size*sizeof(double))) == NULL) {goto memFree;} 
-  if ((q   = (double *)malloc(k_size*sizeof(double))) == NULL) {goto memFree;} 
+  if ((F_val = (double *)malloc(K_size*sizeof(double))) == NULL) {goto memFree;} 
+  if ((u_val = (double *)malloc(K_size*sizeof(double))) == NULL) {goto memFree;} 
 
-  K_len = 0 ;
-
-  for (i=0; i<k_size; i++) 
+  for (i=0; i<K_size; i++) 
   { 
-    K_sizes[i] = 0 ; 
-    K_from[i]  = 0 ; 
     F_val[i]   = 0.0 ; 
     u_val[i]   = 0.0 ; 
-    M[i]       = 0.0 ; 
-    r[i]       = 0.0 ; 
-    z[i]       = 0.0 ; 
-    p[i]       = 0.0 ; 
-    q[i]       = 0.0 ; 
   } 
 
-  for (i=0; i<n_nodes; i++)
-  {
-    for (j=0; j<n_elems; j++)
-    {
-      if ((n1[j]-1) == i) 
-      {
-        K_sizes[3*i+0]+=6; 
-        K_sizes[3*i+1]+=6; 
-        K_sizes[3*i+2]+=6; 
-      }
-      if ((n2[j]-1) == i) 
-      {
-        K_sizes[3*i+0]+=6; 
-        K_sizes[3*i+1]+=6; 
-        K_sizes[3*i+2]+=6; 
-      }
-    }
-  }
-
-  for (j=(3*n_nodes); j<k_size; j++) /* free rotations */
-    { K_sizes[j]=6; }
-
-  sum = 0 ;
-
-  for (i=0; i<k_size; i++)
-  {
-    K_from[i] = sum ;
-    sum += K_sizes[i] ;
-  }
-
-  K_len = sum ;
-
-  if ((K_cols = (int *)malloc(K_len*sizeof(int))) == NULL) { goto memFree ; } 
   if ((K_val = (double *)malloc(K_len*sizeof(double))) == NULL) { goto memFree ; } 
-
-  for (i=0; i<K_len; i++)
-  {
-    K_cols[i] = -1 ;
-    K_val[i]  = 0.0 ;
-  }
+  for (i=0; i<K_len; i++) { K_val[i]  = 0.0 ; }
 
   if (sol_mode > 0)
   {
-    if ((M_cols = (int *)malloc(K_len*sizeof(int))) == NULL) { goto memFree ; } 
     if ((M_val = (double *)malloc(K_len*sizeof(double))) == NULL) { goto memFree ; } 
-    if ((Mu_val = (double *)malloc(k_size*sizeof(double))) == NULL) { goto memFree ; } 
-    if ((Fr_val = (double *)malloc(k_size*sizeof(double))) == NULL) { goto memFree ; } 
-    if ((uu_val = (double *)malloc(k_size*sizeof(double))) == NULL) { goto memFree ; } 
-    for (i=0; i<K_len; i++)
-    {
-      M_cols[i] = -1 ;
-      M_val[i]  = 0.0 ;
-    }
-    for (i=0; i<k_size; i++)
+    if ((Mu_val = (double *)malloc(K_size*sizeof(double))) == NULL) { goto memFree ; } 
+    if ((Fr_val = (double *)malloc(K_size*sizeof(double))) == NULL) { goto memFree ; } 
+    if ((uu_val = (double *)malloc(K_size*sizeof(double))) == NULL) { goto memFree ; } 
+    for (i=0; i<K_len; i++) { M_val[i]  = 0.0 ; }
+    for (i=0; i<K_size; i++)
     {
       Mu_val[i] = 0.0 ;
       Fr_val[i] = 0.0 ;
@@ -689,7 +618,6 @@ int alloc_kf()
     }
   }
 
-  K_size = k_size ;
   return(0);
 memFree:
   fprintf(stderr,"Not enough memory!");
@@ -697,153 +625,52 @@ memFree:
   return(-1);
 }
 
-double norm_K()
+
+/* Equation solver (symmetric Gauss): */
+int solve_eqs(A, x, b, n)
+double *A;
+double *x;
+double *b;
+int n;
 {
-  int i,j ;
-  double MaxNorm = 0.0 ;
-  double Norm    = 0.0 ;
-  
-  for (i=0; i<(3*n_nodes); i++)
+  int    i,j,k,l,m;
+  double c, s;
+
+  for (i=0; i<n; i++) {x[i] = b[i] ;}
+
+  for (k=1; k<n; k++)
   {
-     Norm = 0.0;
-    for (j=K_from[i]; j<K_from[i]+K_sizes[i]; j++)
+    for (i=k+1; i<=n; i++)
     {
-      if (K_cols[j] < 0) {break;}
-      Norm += (K_val[j]*K_val[j]);
-    }
-    Norm = sqrt(Norm);
-    if (Norm > MaxNorm) {MaxNorm = Norm;}
-  }
-  return(Norm);
-}
-
-double vec_norm(a, len)
-double *a;
-int len;
-{
-  int i ;
-  double Norm    = 0.0 ;
-  
-  for (i=0; i<len; i++) { Norm += (a[i]*a[i]); }
-  return(sqrt(Norm));
-}
-
-int solve_eqs()
-{
-  double ro, alpha, beta;
-  double roro = 0.0 ;
-  double normRes, normX, normA, normB;
-  double mval ;
-  int   converged = 0;
-  int   n = 0;
-  int   i,j,k;
-
-  n = K_size;
-
-  normA = norm_K();
-  normB = vec_norm(F_val, n);
-
-  if (normB <= 0.0) /* no loads - nothing to do */
-  {
-    fprintf(stderr,"No load found!\n");
-    return(0);
-  }
-
-  /* Jacobi preconditioner: */
-  for (i=0; i<n; i++) 
-  { 
-    M[i] = 0.0 ;
-    for (j=K_from[i]; j<K_from[i]+K_sizes[i]; j++)
-    {
-      if (K_cols[j] == (i))
+      l = k + (i*i-i)/2-1 ;
+      m = k + (k*k-k)/2-1 ;
+      if (fabs(A[m]) < 1e-6) {return(-1);}
+      c = A[l]/A[m] ;
+      for (j=i; j<=n; j++)
       {
-        M[i] = K_val[j] ;
-        break ;
+        l = i + (j*j-j)/2-1 ;
+        m = k + (j*j-j)/2-1 ;
+        A[l] -= c*A[m] ;
       }
-    }
-
-    if (fabs(M[i]) < 1e-5) 
-    { 
-      fprintf(stderr,"zero value at [%d,%d]: %e\n",i+1,i+1, M[i]);
-      return( -1 ); 
+      x[i-1] = x[i-1] - c*x[k-1] ;
     }
   }
+  l = n + (n*n-n)/2-1 ;
+  x[n-1] = x[n-1] / A[l] ;
 
-  /* r = b - A*x  */
-  for (i=0; i<n; i++)
+  for (i=n-1 ; i >=1; i--)
   {
-    mval = 0.0 ;
-
-    for (j=0; j<K_sizes[i]; j++)
+    s = 0.0 ;
+    for (j=i+1; j<=n; j++)
     {
-      if  (K_cols[K_from[i]+j] < 0) {break;}
-      mval += K_val[K_from[i]+j] * u_val[K_cols[K_from[i]+j]];
+      l = i + (j*j-j)/2-1 ;
+      s += A[l] * x[j-1] ;
     }
-    r[i] = mval ;
+    l = i + (i*i-i)/2-1 ;
+    x[i-1] = (x[i-1]-s) / A[l] ;
   }
-  for (i=0; i<n; i++) { r[i] = F_val[i] - r[i] ; }
 
-  /* main loop */
-  for (i=1; i<=n; i++) 
-  { 
-    fprintf(stderr,"  CG iteration: %d/%d\n",i,n);
-    for (j=0; j<n; j++) { z[j] = (r[j] / M[j]) ; }
-
-    ro = 0.0 ;
-    for (j=0; j<n; j++) {ro += r[j]*z[j];}
-
-    if (i == 1)
-    {
-      for (j=0; j<n; j++) { p[j] = z[j]; }
-    }
-    else
-    {
-      beta = ro / roro ;
-      for (j=0; j<n; j++) { p[j] = (z[j] + (beta*p[j])) ; }
-    }
-
-    for (k=0; k<n; k++) /* q = K*p */
-    {
-      mval = 0.0 ;
-
-      for (j=0; j<K_sizes[k]; j++)
-      {
-        if  (K_cols[K_from[k]+j] < 0) {break;}
-        mval += K_val[K_from[k]+j] * p[K_cols[K_from[k]+j]];
-      }
-      q[k] = mval ;
-    }
-
-    mval = 0.0 ;
-    for (j=0; j<n; j++) {mval += p[j]*q[j];}
-    alpha = ro / mval ;
-
-    for (j=0; j<n; j++) 
-    { 
-      u_val[j] = u_val[j] + (alpha * p[j])  ; 
-      r[j] = r[j] - (alpha * q[j])  ; 
-    } 
-
-    /* Convergence testing */
-    normRes = vec_norm(r, n);
-    normX   = vec_norm(u_val, n);
-
-    if (normRes  <= ((1e-3)*((normA*normX) + normB)) ) 
-    {
-      converged = 1;
-      break;
-    }
-
-    roro = ro;
-  
-  } /* end of main loop */
-
-  if (converged == 1) { return(0); }
-  else                
-  {
-    fprintf(stderr,"Unconverged solution!\n");
-    return(-1); 
-  }
+  return(0);
 }
 
 /** Local stiffness matrix */
@@ -1074,25 +901,9 @@ int col;
 float val;
 {
   int i ;
-
-  for (i=K_from[row-1]; i<(K_from[row-1]+K_sizes[row-1]); i++)
-  {
-
-    if (K_cols[i] == (col-1))
-    {
-      K_val[i] += val ; 
-      return ;
-    }
-
-    if (K_cols[i] < 0)
-    {
-      K_cols[i] = (col-1) ;
-      K_val[i] = val ; 
-      return ;
-    }
-  }
-  fprintf(stderr,"Addition of [%i,%i] to K failed (%e)\n",row,col,val);
-  return; /* we should NOT reach this point */
+  if (col < row) return  ;
+  i = row + (col*col-col)/2-1 ;
+  K_val[i] += val ;
 }
 
 /* puts data to the right place in M */
@@ -1102,25 +913,10 @@ int col;
 float val;
 {
   int i ;
+  if (col < row) return  ;
+  i = row + (col*col-col)/2-1 ;
+  M_val[i] += val ; 
 
-  for (i=K_from[row-1]; i<(K_from[row-1]+K_sizes[row-1]); i++)
-  {
-
-    if (M_cols[i] == (col-1))
-    {
-      M_val[i] += val ; 
-      return ;
-    }
-
-    if (M_cols[i] < 0)
-    {
-      M_cols[i] = (col-1) ;
-      M_val[i] = val ; 
-      return ;
-    }
-  }
-  fprintf(stderr,"Addition of [%i,%i] to M failed (%e)\n",row,col,val);
-  return; /* we should NOT reach this point */
 }
 
 
@@ -1229,37 +1025,27 @@ float val;
   int i,j,n ;
   int row ;
 
-  row = (node-1)*3 + dir - 1 ;  /* note: -1 ? */
+  row = (node-1)*3 + dir  ;  /* note: -1 ? */
   n = K_size ;
 
-  for (i=0; i<n; i++)
+  for (i=1; i<=n; i++)
   {
-    for (j=K_from[i]; j<(K_from[i]+K_sizes[i]); j++)
-    {
-      if (K_cols[i] == (row))
-      {
-        if (K_cols[i] < 0) {break;}
-        F_val[K_cols[i]] += K_val[i]*val ;
-        K_val[i] = 0.0 ;
-        break ;
-      }
-    }
+    if (i > row) { j = row + (i*i-i)/2-1 ; }
+    else         { j = i + (row*row-row)/2-1 ; }
+    F_val[i-1] += K_val[j]*val ;
   }
 
-  for (i=K_from[row]; i<K_from[row]+K_sizes[row]; i++)
+  for (i=1; i<=n; i++)
   {
-    if (K_cols[i] < 0) {break;}
-    if (K_cols[i] == row) 
-    {
-      K_val[i] = 1.0 ;
-    }
-    else
-    {
-      K_val[i] = 0.0 ;
-    }
+    if (i > row) { j = row + (i*i-i)/2-1 ; }
+    else         { j = i + (row*row-row)/2-1 ; }
+    K_val[j] = 0.0 ;
   }
-  u_val[row] = val ;
-  F_val[row] = val ; /* it will destroy any force in this place */
+
+  K_val[row+(row*row-row)/2-1] = 1.0 ;
+
+  u_val[row-1] = val ;
+  F_val[row-1] = val ; /* it will destroy any force in this place */
 }
 
 /* adds supports to M (zero values only) */
@@ -1270,34 +1056,17 @@ int   dir;
   int i,j,n ;
   int row ;
 
-  row = (node-1)*3 + dir - 1 ;  /* note: -1 ? */
-  n = K_size;
+  row = (node-1)*3 + dir  ;  /* note: -1 ? */
+  n = K_size ;
 
-  for (i=0; i<n; i++)
+  for (i=1; i<=n; i++)
   {
-    for (j=K_from[i]; j<(K_from[i]+K_sizes[i]); j++)
-    {
-      if (M_cols[i] == (row))
-      {
-        if (M_cols[i] < 0) {break;}
-        M_val[i] = 0.0 ;
-        break ;
-      }
-    }
+    if (i > row) { j = row + (i*i-i)/2-1 ; }
+    else         { j = i + (row*row-row)/2-1 ; }
+    M_val[j] = 0.0 ;
   }
 
-  for (i=K_from[row]; i<K_from[row]+K_sizes[row]; i++)
-  {
-    if (M_cols[i] < 0) {break;}
-    if (M_cols[i] == row) 
-    {
-      M_val[i] = 1.0 ;
-    }
-    else
-    {
-      M_val[i] = 0.0 ;
-    }
-  }
+  M_val[row+(row*row-row)/2-1] = 1.0 ;
 }
 
 /* forces */
@@ -2143,6 +1912,7 @@ int inv_iter(num_res)
   int num_res;
 {
   int rv = -1 ;
+#if 0
   int i, j, k, jj ;
   double om_top ;
   double om_bot ;
@@ -2233,7 +2003,7 @@ int inv_iter(num_res)
         F_val[k]  = Mu_val[k] ;
         Mu_val[k] = mval ;
       }
-      solve_eqs(); /* equation solver*/
+      solve_eqs(K_val, u_val, F_val, K_size); /* equation solver*/
       for (k=0; k<K_size; k++) /* switch data for solve_eqs F -> Mu */
       {
         mval = F_val[k] ;
@@ -2278,7 +2048,8 @@ int inv_iter(num_res)
         K_val[k] = M_val[k] ;
         M_val[k] = mval ;
       }
-      solve_eqs(); /* equation solver*/
+      /* equation solver*/
+      solve_eqs(K_val, u_val, F_val, K_size); /* equation solver*/
       for (k=0; k<K_size; k++) /* switch data for solve_eqs F -> Mu */
       {
         mval = F_val[k] ;
@@ -2330,6 +2101,7 @@ memFree:
     free(eig_val[i]); eig_val[i] = NULL ;
   }
   free(eig_val); eig_val = NULL ;
+#endif
   return(rv) ;
 }
 
@@ -2480,7 +2252,7 @@ char *argv[];
   	disps_and_loads(0);
 
   	fprintf(stderr,"\nSolution: \n");
-  	solve_eqs();
+    solve_eqs(K_val, u_val, F_val, K_size); /* equation solver*/
   	fprintf(stderr,"End of solution. \n");
 
   	if (fo != NULL) 
@@ -2515,7 +2287,7 @@ char *argv[];
   	  fprintf(stderr,"\nSolution (linear stability): \n");
   	  stiff(0,0); 
   	  disps_and_loads(0);
-  	  solve_eqs();
+      solve_eqs(K_val, u_val, F_val, K_size); /* equation solver*/
       geom_stiff(0);
       for (i=0; i<K_len; i++) { K_val[i] = 0.0 ; }
       for (i=0; i<K_size; i++) 
