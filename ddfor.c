@@ -29,7 +29,7 @@
 #endif
 #include <math.h>
 
-int    sol_mode = 0 ; /* 0=statics, 1=stability, 2=modal, 3=aaem */
+int    sol_mode = 1 ; /* 0=statics, 1=stability, 2=modal, 3=aaem */
 
 int    n_nodes = 0 ;
 int    n_elems = 0 ;
@@ -1907,12 +1907,38 @@ int   mode;
 }
 #endif
 
+/** Matrix by vector multiplication */
+void mat_vec_mult(a, b, c, n)
+double *a; /* matrix [n][n] */
+double *b; /* vector [n]    */
+double *c; /* vector [n]    */
+int n;     /* size          */
+{
+  int i,j, p ;
+
+  for (i=1; i<=n; i++)
+  {
+    c[i-1] = 0.0 ;
+    for (j=1; j<=n; j++)
+    {
+      if (j>=i)
+      {
+        p = i+(j*j-j)/2 -1 ;
+      }
+      else
+      {
+        p = j+(i*i-i)/2 -1 ;
+      }
+      c[i-1] += a[p] * b[j-1] ;
+    }
+  }
+}
+
 /** Computation of eigenvalues */
 int inv_iter(num_res)
   int num_res;
 {
   int rv = -1 ;
-#if 0
   int i, j, k, jj ;
   double om_top ;
   double om_bot ;
@@ -1938,16 +1964,7 @@ int inv_iter(num_res)
   omega0  = 0.0 ;
   omega   = 0.0 ;
 
-  for (k=0; k<K_size; k++) /* Mu = M*u ... initial z1 */
-  {
-    mval = 0.0 ;
-    for (j=0; j<K_sizes[k]; j++)
-    {
-      if  (K_cols[K_from[k]+j] < 0) {break;}
-      mval += M_val[K_from[k]+j] * u_val[K_cols[K_from[k]+j]];
-    }
-    Mu_val[k] = mval ;
-  }
+  mat_vec_mult(M_val, u_val, Mu_val, K_size);  /* Mu = M*u ... initial z1 */
 
   for (j=1; j<=num_res; j++) /* main loop*/
   {
@@ -1965,16 +1982,8 @@ int inv_iter(num_res)
           Fr_val[jj] = 0.0;
           Mu_val[jj] = 0.0;
         }
-        for (k=0; k<K_size; k++) /* Mu = M*u ... initial z1 */
-        {
-          mval = 0.0 ;
-          for (jj=0; jj<K_sizes[k]; jj++)
-          {
-            if  (K_cols[K_from[k]+jj] < 0) {break;}
-            mval += M_val[K_from[k]+jj] * u_val[K_cols[K_from[k]+jj]];
-          }
-          Mu_val[k] = mval ;
-        }
+
+        mat_vec_mult(M_val, u_val, Mu_val, K_size); /* Mu = M*u ... initial z1 */
         for (jj=0; jj<(j-1); jj++)
         {
           c = 0.0 ;
@@ -1986,16 +1995,7 @@ int inv_iter(num_res)
           F_val[k] = u_val[k] - Fr_val[k] ;
           Mu_val[k] = 0.0 ;
         }
-        for (k=0; k<K_size; k++) /* Mu = M*F ... z1 for j>=2 */
-        {
-          mval = 0.0 ;
-          for (jj=0; jj<K_sizes[k]; jj++)
-          {
-            if  (K_cols[K_from[k]+jj] < 0) {break;}
-            mval += M_val[K_from[k]+jj] * F_val[K_cols[K_from[k]+jj]];
-          }
-          Mu_val[k] = mval ;
-        }
+        mat_vec_mult(M_val, F_val, Mu_val, K_size); /* Mu = M*F ... z1 for j>=2  TODO*/
       }
       for (k=0; k<K_size; k++) /* switch data for solve_eqs: Mu -> F */
       {
@@ -2011,16 +2011,7 @@ int inv_iter(num_res)
         Mu_val[k] = mval ;
       }
 
-      for (k=0; k<K_size; k++) /* Mu = uu (eig_x) */
-      {
-        mval = 0.0 ;
-        for (jj=0; jj<K_sizes[k]; jj++)
-        {
-          if  (K_cols[K_from[k]+jj] < 0) {break;}
-          mval += M_val[K_from[k]+jj] * u_val[K_cols[K_from[k]+jj]];
-        }
-        uu_val[k] = mval ;
-      }
+      mat_vec_mult(M_val, u_val, uu_val, K_size); /* Mu = uu (eig_x) */
       for (k=0; k<K_size; k++) { om_top += u_val[k]*Mu_val[k] ; }
       for (k=0; k<K_size; k++) { om_bot += u_val[k]*uu_val[k] ; }
       if (fabs(om_bot) <(1e-8))
@@ -2101,7 +2092,6 @@ memFree:
     free(eig_val[i]); eig_val[i] = NULL ;
   }
   free(eig_val); eig_val = NULL ;
-#endif
   return(rv) ;
 }
 
