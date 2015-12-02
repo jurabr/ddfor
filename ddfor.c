@@ -2138,6 +2138,26 @@ int   mode;
 }
 #endif
 
+/** Multiplies M matrix by given vector */
+void M_vec_mul(vec, res)
+double *vec ;
+double *res ;
+{
+  int k, j ;
+  double mval ;
+
+  for (k=0; k<K_size; k++) /* Mu = M*u ... initial z1 */
+  {
+    mval = 0.0 ;
+    for (j=0; j<K_sizes[k]; j++)
+    {
+      if  (K_cols[K_from[k]+j] < 0) {break;}
+      mval += M_val[K_from[k]+j] * vec[K_cols[K_from[k]+j]];
+    }
+    res[k] = mval ;
+  }
+}
+
 /** Computation of eigenvalues */
 int inv_iter(num_res)
   int num_res;
@@ -2168,16 +2188,7 @@ int inv_iter(num_res)
   omega0  = 0.0 ;
   omega   = 0.0 ;
 
-  for (k=0; k<K_size; k++) /* Mu = M*u ... initial z1 */
-  {
-    mval = 0.0 ;
-    for (j=0; j<K_sizes[k]; j++)
-    {
-      if  (K_cols[K_from[k]+j] < 0) {break;}
-      mval += M_val[K_from[k]+j] * u_val[K_cols[K_from[k]+j]];
-    }
-    Mu_val[k] = mval ;
-  }
+  M_vec_mul(u_val, Mu_val);
 
   for (j=1; j<=num_res; j++) /* main loop*/
   {
@@ -2188,6 +2199,9 @@ int inv_iter(num_res)
     {
       if (j > 1)
       {
+        om_top = 0.0 ;
+        om_bot = 0.0 ;
+
         /* Gram-Schmidt: */
         for(jj=0;jj<K_size;jj++)
         {
@@ -2195,16 +2209,8 @@ int inv_iter(num_res)
           Fr_val[jj] = 0.0;
           Mu_val[jj] = 0.0;
         }
-        for (k=0; k<K_size; k++) /* Mu = M*u ... initial z1 */
-        {
-          mval = 0.0 ;
-          for (jj=0; jj<K_sizes[k]; jj++)
-          {
-            if  (K_cols[K_from[k]+jj] < 0) {break;}
-            mval += M_val[K_from[k]+jj] * u_val[K_cols[K_from[k]+jj]];
-          }
-          Mu_val[k] = mval ;
-        }
+        M_vec_mul(u_val, Mu_val);
+
         for (jj=0; jj<(j-1); jj++)
         {
           c = 0.0 ;
@@ -2216,16 +2222,7 @@ int inv_iter(num_res)
           F_val[k] = u_val[k] - Fr_val[k] ;
           Mu_val[k] = 0.0 ;
         }
-        for (k=0; k<K_size; k++) /* Mu = M*F ... z1 for j>=2 */
-        {
-          mval = 0.0 ;
-          for (jj=0; jj<K_sizes[k]; jj++)
-          {
-            if  (K_cols[K_from[k]+jj] < 0) {break;}
-            mval += M_val[K_from[k]+jj] * F_val[K_cols[K_from[k]+jj]];
-          }
-          Mu_val[k] = mval ;
-        }
+        M_vec_mul(F_val, Mu_val);
       }
       for (k=0; k<K_size; k++) /* switch data for solve_eqs: Mu -> F */
       {
@@ -2241,16 +2238,8 @@ int inv_iter(num_res)
         Mu_val[k] = mval ;
       }
 
-      for (k=0; k<K_size; k++) /* Mu = uu (eig_x) */
-      {
-        mval = 0.0 ;
-        for (jj=0; jj<K_sizes[k]; jj++)
-        {
-          if  (K_cols[K_from[k]+jj] < 0) {break;}
-          mval += M_val[K_from[k]+jj] * u_val[K_cols[K_from[k]+jj]];
-        }
-        uu_val[k] = mval ;
-      }
+      M_vec_mul(u_val, uu_val);
+      
       for (k=0; k<K_size; k++) { om_top += u_val[k]*Mu_val[k] ; }
       for (k=0; k<K_size; k++) { om_bot += u_val[k]*uu_val[k] ; }
       if (fabs(om_bot) <(1e-8))
@@ -2260,7 +2249,6 @@ int inv_iter(num_res)
         goto memFree;
       }
       omega = om_top / om_bot ; /* eigenvalue */
-      printf("OMEGA[%i]: %e\n",i+1,omega);
 
       for(jj=0;jj<K_size;jj++) {Mu_val[jj]=(uu_val[jj]/sqrt(om_bot)); } /* z(k+1) */
 
@@ -2464,6 +2452,14 @@ char *argv[];
     } else {
       fp = NULL ;
     }
+  }
+
+  /* Mode of solution */
+  if (argc > 5)
+  {
+    sol_mode = atoi(argv[5]) ;
+    if (sol_mode < 0) {sol_mode = 0 ;}
+    if (sol_mode > 2) {sol_mode = 2 ;}
   }
 
   if (alloc_kf() != 0 )
