@@ -22,7 +22,7 @@ The code uses the Direct Stiffness Method
 Usage
 -----
 
-ddfor [inputfile [outputfile] [elementforcesfile] [plotfile]]
+ddfor [inputfile [outputfile] [elementforcesfile] [plotfile] [mode]]
 
 If no "inputfile" is given then program pseudo-interactively asks for data 
 (note: there is no command line editing and no undo). The pseudo-interactive 
@@ -38,6 +38,13 @@ and 7th are for V and the 8th and 9th are for M internal forces.
 
 If name of any of the output files starts with the "0" or the "-" characters
 the this file is not written.
+
+The "mode" have to be:
+- non-present of 0 for statics
+- 1 for stability
+- 2 or mode for modal analysis (the number >2 means number of frequencies 
+  to be computed). Note: there is a bug for higher modal frequencies -
+  do not use them!
 
 
 Conventions
