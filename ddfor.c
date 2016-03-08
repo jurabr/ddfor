@@ -59,7 +59,7 @@ int   *f_d = NULL ; /* direction 1=fx 2=fy 3=m */
 float *f_v = NULL ; /* size */
 int   *f_g = NULL ; /* load group */
 
-int   *l_e = NULL ; /* node */
+int   *l_e = NULL ; /* element */
 int   *l_d = NULL ; /* direction 1=x 2=y, 3=x global, 4=y global */
 float *l_v1 = NULL ; /* size at beginning */
 float *l_v2 = NULL ; /* size at end */
@@ -2105,7 +2105,7 @@ int   mode;
       ii =  (int)((x_e-min_x) * mult_x) + 1  ;
       jj = size_y - ( (int)((y_e-min_y) * mult_y) + 1 ) ;
       fld[jj][ii] = symbol ;
-      
+
       /* hinges: */
       if ((is==2)&&((type[i]==1)||(type[i]==3))) fld[jj][ii] = 'o' ;
       if ((is==(ilen-2))&&((type[i]==2)||(type[i]==3))) fld[jj][ii] = 'o' ;
@@ -2155,8 +2155,8 @@ int   mode;
        {
           if (fld[jj][ii] == 'A' )
           {
-             fld[jj-1][ii] = 'A' ;
-             fld[jj][ii] = 'X'  ;
+             fld[jj][ii] = 'A' ;
+             fld[jj-1][ii] = 'X'  ;
            }
            else  fld[jj][ii] = 'X' ;
        }
@@ -2173,13 +2173,17 @@ int   mode;
     {
       switch (f_d[j]) /* TODO: sizes, orientation */
       {
-        case 1: fld[jj][ii] = '=' ;
-                fld[jj][ii+1] = '>' ;
+        case 1: if (f_v[j] > 0.0) 
+                     { fld[jj][ii] = '=' ; fld[jj][ii+1] = '>' ; }
+                else { fld[jj][ii] = '<' ; fld[jj][ii+1] = '=' ; }
                 break ;
-        case 2: fld[jj-1][ii] = '|'  ;
-                fld[jj][ii] = 'V' ;
+        case 2: if (f_v[j] > 0.0)
+                     { fld[jj-1][ii] = '|'  ; fld[jj][ii] = 'V' ; } 
+                else { fld[jj-1][ii] = '^'  ; fld[jj][ii] = '|' ; } 
                 break ;
-        case 3: fld[jj][ii] = 'M'  ;
+        case 3: if (f_v[j] > 0.0)
+                     { fld[jj][ii] = '_'  ; fld[jj][ii+1] = '^'  ; }
+                else { fld[jj][ii] = '^'  ; fld[jj][ii+1] = '_'  ; }
                 break ;
       }
     }
