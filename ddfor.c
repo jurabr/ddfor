@@ -2190,7 +2190,8 @@ int   mode;
     }
   }
 
-  /* plot symbole for element loads */
+  /* plot symbol for element loads */
+  if (mode == -1) {
   for (j=0; j<n_eload; j++)
   {
     fsymbol = ' ' ;
@@ -2237,6 +2238,7 @@ int   mode;
       }
     }
   }
+  } /* mode == -1 */
  
 
   /* plot data: */  
