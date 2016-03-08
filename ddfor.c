@@ -2038,6 +2038,7 @@ int   mode;
   double x_e, y_e, dx, dy ;
   char   **fld = NULL;
   char   symbol;
+  char   fsymbol;
   char   str[5];
   int i, j;
   int ii, jj;
@@ -2171,7 +2172,7 @@ int   mode;
     jj = size_y - ( (int)((y_i[i]-min_y) * mult_y) + 1 ) ;
     if (mode != 0) 
     {
-      switch (f_d[j]) /* TODO: sizes, orientation */
+      switch (f_d[j]) /* TODO: sizes */
       {
         case 1: if (f_v[j] > 0.0) 
                      { fld[jj][ii] = '=' ; fld[jj][ii+1] = '>' ; }
@@ -2185,6 +2186,54 @@ int   mode;
                      { fld[jj][ii] = '_'  ; fld[jj][ii+1] = '^'  ; }
                 else { fld[jj][ii] = '^'  ; fld[jj][ii+1] = '_'  ; }
                 break ;
+      }
+    }
+  }
+
+  /* plot symbole for element loads */
+  for (j=0; j<n_eload; j++)
+  {
+    fsymbol = ' ' ;
+    switch (l_d[j])
+    {
+      case 1: if (l_v1[j] > 0.0) { fsymbol = '>' ; }
+                else             { fsymbol = '<' ; }  
+              break ;
+      case 2: if (l_v1[j] > 0.0) { fsymbol = 'V' ; }
+                else             { fsymbol = '^' ; }  
+              break ;
+    }
+      
+    i = l_e[j] - 1 ;
+    /* dx and dy computation */
+    x_e =  (x_i[n2[i]-1] - x_i[n1[i]-1]) ;
+    y_e =  (y_i[n2[i]-1] - y_i[n1[i]-1]) ;
+    symbol = '*';
+    if (fabs(x_e) < 1e-6) symbol = '|' ;
+    if (fabs(y_e) < 1e-6) symbol = '-' ;
+    if (symbol == '*')
+    {
+      if ((y_e*x_e) > 0.0) symbol = '/' ;
+      else                 symbol ='\\';
+    }
+    /* gfx lenght of element */
+    ii =  (int)(fabs(x_e) * mult_x) + 1  ;
+    jj =  (int)(fabs(y_e) * mult_y) + 1 ;
+    ilen = (int)(sqrt(pow((float)ii,2) + pow((float)jj,2))) ;
+    dx = x_e ; dy = y_e ;
+    for (is=1; is<ilen; is++)
+    {
+      x_e = ((float)is/(float)ilen)*dx + x_i[n1[i]-1] ;
+      y_e = ((float)is/(float)ilen)*dy + y_i[n1[i]-1] ;
+      ii =  (int)((x_e-min_x) * mult_x) + 1  ;
+      jj = size_y - ( (int)((y_e-min_y) * mult_y) + 1 ) ;
+
+      switch (symbol)
+      {
+        case '-': fld[jj-1][ii] = fsymbol ; break ;
+        case '|': fld[jj][ii+1] = fsymbol ; break ;
+        case '/': fld[jj-1][ii+1] = fsymbol ; break ; 
+        case '\\': fld[jj-1][ii+1] = fsymbol ; break  ;
       }
     }
   }
@@ -2389,7 +2438,7 @@ char *argv[];
 
   n_modal = 1 ; /* no. of mode shapes */
 
-  fprintf(stderr,"\nDDFOR 1.1.3: direct stiffness method solver for statics of 2D frames.\n");
+  fprintf(stderr,"\nDDFOR 1.1.4: direct stiffness method solver for statics of 2D frames.\n");
   fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
 
   if (argc < 2)
