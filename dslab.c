@@ -59,7 +59,7 @@ int   *f_g = NULL ; /* load group */
 /* solution variables: */
 double  ke[12][12] ;
 double  S[12][12] ;
-double  Si[12][12] ;
+double  B[3][12] ;
 double  D[3][3] ;
 double  fe[12];
 double  ue[12];
@@ -707,7 +707,7 @@ int lc;
   int i, j, k, ii, jj, m ;
   float xi[4];
   float yi[4];
-  float A, tuh ;
+  float A, tuh, xjj, yjj ;
 
   for (i=0; i<n_elems; i++)
   {
@@ -718,7 +718,6 @@ int lc;
       for (k=0;k<12;k++)
       {
         S[m][k] = 0.0 ;
-        Si[m][k] = 0.0 ;
       }
     }
     xi[0] = x_i[n1[i]-1] ;
@@ -779,6 +778,23 @@ int lc;
     }
 
     femMatInvS(S, 12) ; /* S inversion */
+
+/* TODO xjj, yjj !!! */
+    B[0][3] = 2 ;
+    B[0][6] = 6*xjj ;
+    B[0][7] = 2*yjj ;
+    B[0][10] = 6*xjj*yjj ;
+    B[1][5] = 2 ;
+    B[1][8] = 2*xjj ;
+    B[1][9] = 6*yjj ;
+    B[1][11] = 6*xjj*yjj ;
+    B[2][4] = 2 ;
+    B[2][7] = 4*xjj ;
+    B[2][8] = 4*yjj ;
+    B[2][10] = 6*xjj*xjj ;
+    B[2][11] = 6*yjj*yjj ;
+
+    /* TODO some multiplications here.... */
 
     /* localisat]on */
     for (k=0; k<6; k++)
