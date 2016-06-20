@@ -635,6 +635,69 @@ float val;
   return; /* we should NOT reach this point */
 }
 
+int femMatInvS(a, size)
+  float **a ;
+  int  size ;
+{
+	long m,n;
+	long i,j,k;
+	float f,f2;
+	float val = 0;
+	float *f1;
+
+	n = size ;
+	if ((f1 = (float *)malloc(n*sizeof(float)))==NULL) return(-1);
+	m = n-1;
+
+	val = a[0][0];
+  a[0][0] = (1.0 / val) ;
+
+	for (i = 1; i <= m; i++)
+	{
+	  for (j = 1; j <= i; j++)
+		{
+			f = 0.0;
+
+			for (k=1; k <= i; k++)
+			{
+				f += ( a[j-1][k-1] * a[k][i+1-1] );
+			}
+			f1[j-1] = (-f) ;
+		}
+		
+		f2 = a[i+1-1][i+1-1];
+		
+		for (j = 1; j <= i; j++)
+		{
+			f2 +=  a[j-1][i+1-1] * f1[j-1] ;
+		}
+		
+		if(fabs(f2 / (a[i+1-1][i+1-1])) < 1e-8) { free(f1) ; return(-2); }
+
+		f2 = 1.0 / f2;
+
+		a[i+1-1][i+1-1] =  f2;
+		
+		for (j = 1; j <= i; j++)
+		{
+			for (k = 1; k <= i; k++)
+			{
+				a[j-1][k-1] = ((f1[j-1] * f1[k-1] * f2) + a[j-1][k-1] );
+			}
+		}
+		
+		for (j = 1; j <= i; j++)
+		{
+			a[j-1][i+1-1] = f1[j-1] * f2 ;
+			a[i+1-1][j-1] = a[j-1][i+1-1] ;
+		}
+	}
+
+	free(f1); f1 = NULL ;
+	return(0);
+}
+
+
 
 /* computes stiffness matrix of the structure */
 void stiff(eg, lc)
@@ -673,32 +736,51 @@ int lc;
     
     tuh = (float)((E[i]*pow(tl[i],3))/(1-pow(nu[i],2))) ;
 
-    /* TODO */
     for (j=0; j<4; j++)
     {
-      S[0][j*3]=1.0;
-      S[1][j*3]=xi[j];
-      S[2][j*3]=yi[j];
-      S[3][j*3]=pow(xi[j],2);
-      S[4][j*3]=xi[j]*yi[j];
-      S[5][j*3]=pow(yi[j],2);
-      S[6][j*3]=pow(xi[j],3);
-      S[7][j*3]=pow(xi[j],2)*yi[j];
-      S[8][j*3]=xi[j]*pow(yi[j],2);
-      S[9][j*3]=pow(yi[j],3);
-      S[10][j*3]=pow(xi[j],3)*yi[j];
-      S[11][j*3]=xi[j]*pow(yi[j],3);
+      S[j*3][0]=1.0;
+      S[j*3][1]=xi[j];
+      S[j*3][2]=yi[j];
+      S[j*3][3]=pow(xi[j],2);
+      S[j*3][4]=xi[j]*yi[j];
+      S[j*3][5]=pow(yi[j],2);
+      S[j*3][6]=pow(xi[j],3);
+      S[j*3][7]=pow(xi[j],2)*yi[j];
+      S[j*3][8]=xi[j]*pow(yi[j],2);
+      S[j*3][9]=pow(yi[j],3);
+      S[j*3][10]=pow(xi[j],3)*yi[j];
+      S[j*3][11]=xi[j]*pow(yi[j],3);
 
-    /*
-S(0,j*3+1)=0;S(1,j*3+1)=0;S(2,j*3+1)=1;S(3,j*3+1)=0;S(4,j*3+1)=xi(j);S(5,j*3+1)=2*yi(j);S(6,j*3+1)=0;S(7,j*3+1)=xi(j)^2;S(8,j*3+1)=2*xi(j)*yi(j);S(9,j*3+1)=3*yi(j)^2;S(10,j*3+1)=xi(j)^3;S(11,j*3+1)=3*xi(j)*yi(j)^2;
-S(0,j*3+2)=0;S(1,j*3+2)=-1;S(0,j*3+2)=0;S(2,j*3+2)=-2*xi(j);S(3,j*3+2)=-yi(j);S(4,j*3+2)=0;S(5,j*3+2)=-3*xi(j)^2;S(6,j*3+2)=-2*xi(j)*yi(j);S(7,j*3+2)=;S(8,j*3+2)=-yi(j)^2;S(9,j*3+2)=0;S(10,j*3+2)=-3*xi(j)^2*yi(j);S(11,j*3+2)=-yi(j)^3;
+      S[j*3+1][0]=0;
+      S[j*3+1][1]=0;
+      S[j*3+1][2]=1;
+      S[j*3+1][3]=0;
+      S[j*3+1][4]=xi[j];
+      S[j*3+1][5]=2*yi[j];
+      S[j*3+1][6]=0;
+      S[j*3+1][7]=pow(xi[j],2);
+      S[j*3+1][8]=2*xi[j]*yi[j];
+      S[j*3+1][9]=3*pow(yi[j],2);
+      S[j*3+1][10]=pow(xi[j],3);
+      S[j*3+1][11]=3*xi[j]*pow(yi[j],2);
 
-*/
+      S[j*3+2][0]=0;
+      S[j*3+2][1]=-1;
+      S[j*3+2][2]=0;
+      S[j*3+2][3]=-2*xi[j];
+      S[j*3+2][4]=-yi[j];
+      S[j*3+2][5]=0;
+      S[j*3+2][6]=-pow(3*xi[j],2);
+      S[j*3+2][7]=-2*xi[j]*yi[j];
+      S[j*3+2][8]=-pow(yi[j],2);
+      S[j*3+2][9]=0;
+      S[j*3+2][10]=-3*pow(xi[j],2)*yi[j];
+      S[j*3+2][11]=-pow(yi[j],3);
     }
 
+    femMatInvS(S, 12) ; /* S inversion */
 
-
-    /* localisation */
+    /* localisat]on */
     for (k=0; k<6; k++)
     {
       F_val[ii-1] += fe[k] ;
