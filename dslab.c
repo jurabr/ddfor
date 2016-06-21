@@ -60,6 +60,10 @@ int   *f_g = NULL ; /* load group */
 double  ke[12][12] ;
 double  S[12][12] ;
 double  B[3][12] ;
+double  SB[12][3] ;
+double  SBD[12][3] ;
+double  SBDB[12][12] ;
+double  SBDBS[12][12] ;
 double  D[3][3] ;
 double  fe[12];
 double  ue[12];
@@ -744,6 +748,13 @@ int lc;
       {
         S[m][k] = 0.0 ;
         ke[m][k] = 0.0 ;
+        SBDB[m][k] = 0.0 ;
+        SBDBS[m][k] = 0.0 ;
+      }
+      for (k=0;k<3;k++)
+      {
+        SB[m][k] = 0.0 ;
+        SBD[m][k] = 0.0 ;
       }
     }
     xi[0] = x_i[n1[i]-1] ;
@@ -840,16 +851,82 @@ int lc;
       B[2][10] = 6*xjj*xjj ;
       B[2][11] = 6*yjj*yjj ;
 
-      /* TODO some multiplications here.... > Ke = Ke +  (Si'*B'*D*B*Si*1) ; 
-       * [12,12]*[12,3]*[3,3]*[3,12]*[12,12] = [12,12]
-       *         [12,3]
-       *               [12,3]
-       *                      [12,12]
-       *                             [12,12]
-       * */
+      /* ST * BT */
+      tuh = 0.0 ;
+      for (k=0; k<12; k++)
+      {
+        for (m=0; m<3; m++)
+        {
+          for (j=0; j<12; j++)
+          {
+            tuh += S[j][k]*B[m][j] ; /* transposition ! */
+          }
+          SB[k][m] = tuh ; tuh = 0.0 ;
+        }
+      }
+
+      /* ST * BT * D */
+      tuh = 0.0 ;
+      for (k=0; k<12; k++) /* first dim */
+      {
+        for (m=0; m<3; m++) /* last dim */
+        {
+          for (j=0; j<3; j++) /* middle dim */
+          {
+            tuh += SB[k][j]*D[j][m] ;
+          }
+          SBD[k][m] = tuh ; tuh = 0.0 ;
+        }
+      }
+
+      /* ST * BT * D * B */
+      tuh = 0.0 ;
+      for (k=0; k<12; k++) /* first dim */
+      {
+        for (m=0; m<12; m++) /* last dim */
+        {
+          for (j=0; j<3; j++) /* middle dim */
+          {
+            tuh += SBD[k][j]*B[j][m] ;
+          }
+          SBDB[k][m] = tuh ; tuh = 0.0 ;
+        }
+      }
+
+      /* ST * BT * D * B * S */
+      tuh = 0.0 ;
+      for (k=0; k<12; k++) /* first dim */
+      {
+        for (m=0; m<12; m++) /* last dim */
+        {
+          for (j=0; j<12; j++) /* middle dim */
+          {
+            tuh += SBDB[k][j]*S[j][m] ;
+          }
+          SBDBS[k][m] = tuh ; tuh = 0.0 ;
+        }
+      }
+
+      /* addition to the Ke (ke): */
+      for (k=0; k<12; k++)
+      {
+        for (m=0; m<12; m++)
+        {
+          ke[k][m] += SBDBS[k][m] ;
+        }
+      }
+    }
+    /* Multiplication bu area */
+    for (k=0; k<12; k++)
+    {
+      for (m=0; m<12; m++)
+      {
+        ke[k][m] *= A ;
+      }
     }
 
-    /* localisation */
+
+    /* TODO: check! (set ii, jj first!) localisation */
     for (k=0; k<6; k++)
     {
       F_val[ii-1] += fe[k] ;
