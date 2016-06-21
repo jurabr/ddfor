@@ -697,6 +697,27 @@ int femMatInvS(a, size)
 	return(0);
 }
 
+float min_4(xi)
+float *xi;
+{
+  int i; 
+  float min ;
+  
+  min = xi[0] ;
+  for (i=1; i<=4; i++) if (xi[i] < min) min = xi[i] ;
+  return(min);
+}
+
+float max_4(xi)
+float *xi;
+{
+  int i; 
+  float max ;
+  
+  max = xi[0] ;
+  for (i=1; i<=4; i++) if (xi[i] > max) max = xi[i] ;
+  return(max);
+}
 
 
 /* computes stiffness matrix of the structure */
@@ -708,6 +729,10 @@ int lc;
   float xi[4];
   float yi[4];
   float A, tuh, xjj, yjj ;
+  float a, b, c, d, tx, ty ;
+  float xj[] = {-0.5774,  0.5774, 0.5774, -0.5774} ;
+  float yj[] = {-0.5774, -0.5774, 0.5774,  0.5774} ;
+
 
   for (i=0; i<n_elems; i++)
   {
@@ -718,6 +743,7 @@ int lc;
       for (k=0;k<12;k++)
       {
         S[m][k] = 0.0 ;
+        ke[m][k] = 0.0 ;
       }
     }
     xi[0] = x_i[n1[i]-1] ;
@@ -732,8 +758,19 @@ int lc;
     
     A=(xi[1]-xi[0])*(yi[2]-yi[1]);
     if (A <= 0.0) {continue;} /* oops, zero area element */
+
+	  a = min_4(xi);
+	  b = max_4(xi);
+	  c = min_4(yi);
+	  d = max_4(yi);
     
     tuh = (float)((E[i]*pow(tl[i],3))/(1-pow(nu[i],2))) ;
+
+    D[0][0] = tuh ;
+    D[0][1] = tuh * nu[i] ;
+    D[1][0] = D[0][1] ;
+    D[1][1] = tuh ;
+    D[2][2] = tuh*0.5*(1-nu[i]) ;
 
     for (j=0; j<4; j++)
     {
@@ -779,24 +816,40 @@ int lc;
 
     femMatInvS(S, 12) ; /* S inversion */
 
-/* TODO xjj, yjj !!! */
-    B[0][3] = 2 ;
-    B[0][6] = 6*xjj ;
-    B[0][7] = 2*yjj ;
-    B[0][10] = 6*xjj*yjj ;
-    B[1][5] = 2 ;
-    B[1][8] = 2*xjj ;
-    B[1][9] = 6*yjj ;
-    B[1][11] = 6*xjj*yjj ;
-    B[2][4] = 2 ;
-    B[2][7] = 4*xjj ;
-    B[2][8] = 4*yjj ;
-    B[2][10] = 6*xjj*xjj ;
-    B[2][11] = 6*yjj*yjj ;
+    /* TODO: integration should start here */
+    for (jj=0; jj<4; jj++)
+    {
 
-    /* TODO some multiplications here.... */
+	    tx = (2*xj[jj]-a-b)/(b-a);
+	    ty = (2*yj[jj]-c-d)/(d-c);
 
-    /* localisat]on */
+	    xjj = ((b-a)*tx+b+a)/2;
+	    yjj = ((d-c)*ty+d+c)/2;
+
+      B[0][3] = 2 ;
+      B[0][6] = 6*xjj ;
+      B[0][7] = 2*yjj ;
+      B[0][10] = 6*xjj*yjj ;
+      B[1][5] = 2 ;
+      B[1][8] = 2*xjj ;
+      B[1][9] = 6*yjj ;
+      B[1][11] = 6*xjj*yjj ;
+      B[2][4] = 2 ;
+      B[2][7] = 4*xjj ;
+      B[2][8] = 4*yjj ;
+      B[2][10] = 6*xjj*xjj ;
+      B[2][11] = 6*yjj*yjj ;
+
+      /* TODO some multiplications here.... > Ke = Ke +  (Si'*B'*D*B*Si*1) ; 
+       * [12,12]*[12,3]*[3,3]*[3,12]*[12,12] = [12,12]
+       *         [12,3]
+       *               [12,3]
+       *                      [12,12]
+       *                             [12,12]
+       * */
+    }
+
+    /* localisation */
     for (k=0; k<6; k++)
     {
       F_val[ii-1] += fe[k] ;
