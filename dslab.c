@@ -867,68 +867,7 @@ memFree:
 }
 
 
-int femMatInvS(a, size)
-  float **a ;
-  int  size ;
-{
-	long m,n;
-	long i,j,k;
-	float f,f2;
-	float val = 0;
-	float *f1;
-
-	n = size ;
-	if ((f1 = (float *)malloc(n*sizeof(float)))==NULL) return(-1);
-	m = n-1;
-
-	val = a[0][0]; 
-  a[0][0] = (1.0 / val) ;
-
-	for (i = 1; i <= m; i++)
-	{
-	  for (j = 1; j <= i; j++)
-		{
-			f = 0.0;
-
-			for (k=1; k <= i; k++)
-			{
-				f += ( a[j-1][k-1] * a[k][i+1-1] );
-			}
-			f1[j-1] = (-f) ;
-		}
-		
-		f2 = a[i+1-1][i+1-1];
-		
-		for (j = 1; j <= i; j++)
-		{
-			f2 +=  a[j-1][i+1-1] * f1[j-1] ;
-		}
-		
-		if(fabs(f2 / (a[i+1-1][i+1-1])) < 1e-8) { free(f1) ; return(-2); }
-
-		f2 = 1.0 / f2;
-
-		a[i+1-1][i+1-1] =  f2;
-		
-		for (j = 1; j <= i; j++)
-		{
-			for (k = 1; k <= i; k++)
-			{
-				a[j-1][k-1] = ((f1[j-1] * f1[k-1] * f2) + a[j-1][k-1] );
-			}
-		}
-		
-		for (j = 1; j <= i; j++)
-		{
-			a[j-1][i+1-1] = f1[j-1] * f2 ;
-			a[i+1-1][j-1] = a[j-1][i+1-1] ;
-		}
-	}
-
-	free(f1); f1 = NULL ;
-	return(0);
-}
-
+/** Support function for Ke computation */
 float min_4(xi)
 float *xi;
 {
@@ -995,8 +934,6 @@ int lc;
     xi[3] = x_i[n4[i]-1] ;
     yi[3] = y_i[n4[i]-1] ;
 
-for (m=0; m<4; m++) { printf(" x,y[%i] = %e, %e\n",m,xi[m],yi[m]); }
-    
     A=(xi[1]-xi[0])*(yi[2]-yi[1]);
     if (A <= 0.0) {continue;} /* oops, zero area element */
 
@@ -1005,7 +942,7 @@ for (m=0; m<4; m++) { printf(" x,y[%i] = %e, %e\n",m,xi[m],yi[m]); }
 	  c = min_4(yi);
 	  d = max_4(yi);
     
-    tuh = (float)((E[i]*pow(tl[i],3))/(1-pow(nu[i],2))) ;
+    tuh = (float)((E[i]*pow(tl[i],3))/(12.0*(1.0-pow(nu[i],2)))) ;
 
     D[0][0] = tuh ;
     D[0][1] = tuh * nu[i] ;
@@ -1055,52 +992,30 @@ for (m=0; m<4; m++) { printf(" x,y[%i] = %e, %e\n",m,xi[m],yi[m]); }
       S[j*3+2][11]=-pow(yi[j],3);
     }
 
-    /* TODO: print S matrix !!! */
-    for (k=0; k<12; k++)
-    {
-      for (m=0; m<12; m++)
-      {
-        printf("%10.3e ",S[k][m]);
-      }
-      printf("\n");
-    }
-
     femLUinverse(S,12) ; /* S inversion */
-
-    /* TODO: print Si matrix !!! */
-    printf("Si: \n");
-    for (k=0; k<12; k++)
-    {
-      for (m=0; m<12; m++)
-      {
-        printf("%10.3e ",S[k][m]);
-      }
-      printf("\n");
-    }
-
 
     /* integration start: */
     for (jj=0; jj<4; jj++)
     {
-	    tx = (2*xj[jj]-a-b)/(b-a);
-	    ty = (2*yj[jj]-c-d)/(d-c);
+	    tx = (2.0*xj[jj]-a-b)/(b-a);
+	    ty = (2.0*yj[jj]-c-d)/(d-c);
 
-	    xjj = ((b-a)*tx+b+a)/2;
-	    yjj = ((d-c)*ty+d+c)/2;
+	    xjj = (((b-a)*tx)+b+a)/2.0;
+	    yjj = (((d-c)*ty)+d+c)/2.0;
 
-      B[0][3] = 2 ;
-      B[0][6] = 6*xjj ;
-      B[0][7] = 2*yjj ;
-      B[0][10] = 6*xjj*yjj ;
-      B[1][5] = 2 ;
-      B[1][8] = 2*xjj ;
-      B[1][9] = 6*yjj ;
-      B[1][11] = 6*xjj*yjj ;
-      B[2][4] = 2 ;
-      B[2][7] = 4*xjj ;
-      B[2][8] = 4*yjj ;
-      B[2][10] = 6*xjj*xjj ;
-      B[2][11] = 6*yjj*yjj ;
+      B[0][3] = -2.0 ;
+      B[0][6] = -6.0*xjj ;
+      B[0][7] = -2.0*yjj ;
+      B[0][10] = -6.0*xjj*yjj ;
+      B[1][5] = -2.0 ;
+      B[1][8] = -2.0*xjj ;
+      B[1][9] = -6.0*yjj ;
+      B[1][11] = -6.0*xjj*yjj ;
+      B[2][4] = -2.0 ;
+      B[2][7] = -4.0*xjj ;
+      B[2][8] = -4.0*yjj ;
+      B[2][10] = -6.0*xjj*xjj ;
+      B[2][11] = -6.0*yjj*yjj ;
 
       /* ST * BT */
       tuh = 0.0 ;
@@ -1110,7 +1025,7 @@ for (m=0; m<4; m++) { printf(" x,y[%i] = %e, %e\n",m,xi[m],yi[m]); }
         {
           for (j=0; j<12; j++)
           {
-            tuh += S[j][k]*B[m][j] ; /* transposition ! */
+            tuh += (S[j][k]*B[m][j]) ; /* transposition ! */
           }
           SB[k][m] = tuh ; tuh = 0.0 ;
         }
@@ -1177,14 +1092,8 @@ for (m=0; m<4; m++) { printf(" x,y[%i] = %e, %e\n",m,xi[m],yi[m]); }
     }
 
     /* TODO: print K matrix !!! */
-    for (k=0; k<12; k++)
-    {
-      for (m=0; m<12; m++)
-      {
-        printf("%10.3e ",ke[k][m]);
-      }
-      printf("\n");
-    }
+    printf("\nKe[%i] in local coordinates:\n",i+1);
+    for (k=0; k<12; k++) { for (m=0; m<12; m++) { printf("%10.3e ",ke[k][m]); } printf("\n"); }
 
 
     /* TODO: check! (set ii, jj first!) localisation */
