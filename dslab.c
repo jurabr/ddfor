@@ -709,7 +709,7 @@ int femLUdecomp(a, index, size)
 			}
 			a[i][j] =  sum ;
 
-			if ((dum=vv[i]*fabs(sum)) >= big)
+			if ((dum=(vv[i]*fabs(sum))) >= big)
 			{
 				big  = dum ;
 				imax = i ;
@@ -729,14 +729,14 @@ int femLUdecomp(a, index, size)
 
 		index[j] =  imax ;
 
-		if (a[j][j] == 0.0) {a[j][j] = 1e-9 ;}
+		if (a[j][j] == 0.0) {a[j][j] = 1e-10 ;}
 
 		if (j != (n-1)) /* !? */
 		{
 			dum = 1.0 / a[j][j] ;
 			for (i = (j+1); i<n; i++)
 			{
-				a[i][j] = dum*a[i][j] ;
+				a[i][j] *= dum ;
 			}
 		}
 	}
@@ -775,7 +775,7 @@ int femLUback(a, index, b, size)
 
 		if (ii > -1) /* means ii > 0 */
 		{
-			for (j=ii; j<i-1; j++)
+			for (j=ii; j<=i-1; j++)
 			{
 				sum -= a[i][j]*b[j] ;
 			}
@@ -790,7 +790,7 @@ int femLUback(a, index, b, size)
 		b[i] = sum;
 	}
 
-	for (i=(n-1); i>0; i--) /* ?! */
+	for (i=(n-1); i>=0; i--) 
 	{
 		sum = b[i];
 		for (j=i+1; j<n; j++)
@@ -882,7 +882,6 @@ int femMatInvS(a, size)
 	m = n-1;
 
 	val = a[0][0]; 
-printf("val = %e\n",val);
   a[0][0] = (1.0 / val) ;
 
 	for (i = 1; i <= m; i++)
