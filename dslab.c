@@ -58,7 +58,6 @@ int   *f_g = NULL ; /* load group */
 
 /* solution variables: */
 double  ke[12][12] ;
-double  S[12][12] ;
 double  B[3][12] ;
 double  SB[12][3] ;
 double  SBD[12][3] ;
@@ -67,6 +66,7 @@ double  SBDBS[12][12] ;
 double  D[3][3] ;
 double  fe[12];
 double  ue[12];
+double  **S;
 
 int    K_len    = 0 ;
 int    K_size   = 0 ;
@@ -96,6 +96,11 @@ FILE *fw ;
     fprintf(stderr,"No nodes!\n");
     return(-1);
   }
+
+  if ((S = (double **)malloc(12*sizeof(double *))) != NULL)
+  {
+    for (i=0; i<12; i++) S[i] = (double *)malloc(12*sizeof(double)) ;
+  } else { exit(-1); }
 
   /* allocate data for nodes */
   if ((x_i=(float *)malloc(n_nodes*sizeof(float))) == NULL)
@@ -638,6 +643,229 @@ float val;
   fprintf(stderr,"Addition of [%i,%i] to K failed (%e)\n",row,col,val);
   return; /* we should NOT reach this point */
 }
+/* TODO: rewrite this to fit DDFOR needs !!! */
+
+/** Decomposition to L/U
+ * @param a matrix (will be modified!)
+ * @param index index vector
+ * @param d modified index status (-1/+1)
+ * @return status
+ */
+int femLUdecomp(a, index, size)
+  double **a ;
+  int     *index ;
+  int      size ;
+{
+	int rv = 0;
+	long i, j, k;
+  long imax = 0  ;
+	long n;
+	double big,dum,sum,temp;
+	double *vv ;
+
+  n = size ;
+	vv = NULL ;
+  if ((vv= (double *)malloc(size*sizeof(double))) == NULL) goto memFree;
+  for (i=0; i<size; i++) vv[i] = 0.0 ;
+
+	for (i=0; i<n; i++)
+	{
+		big = 0.0 ;
+
+		for (j=0; j<n; j++)
+		{
+			if ((temp=fabs((a[i][j]))) > big) 
+      {
+        big = temp;
+      }
+		}
+		if (big == 0.0)
+		{
+			/* singular matrix */
+			rv = -1 ; goto memFree;
+		}
+		vv[i] = (1.0/big) ;
+	}
+
+	for (j=0; j<n; j++)
+	{
+		for (i=0; i<j; i++)
+		{
+			sum = a[i][j];
+			for (k=0; k<i; k++)
+			{
+				sum -= ( a[i][k]*a[k][j] ) ;
+			}
+			a[i][j] = sum ;
+		}
+
+		big = 0.0 ;
+		for (i=j; i<n; i++)
+		{
+			sum = a[i][j];
+			for (k=0; k<j; k++)
+			{
+				sum -= ( a[i][k]*a[k][j] ) ;
+			}
+			a[i][j] =  sum ;
+
+			if ((dum=vv[i]*fabs(sum)) >= big)
+			{
+				big  = dum ;
+				imax = i ;
+			}
+		}
+
+		if (j != imax) /* !? */
+		{
+			for (k=0; k<n; k++)
+			{
+				dum = a[imax][k] ;
+				a[imax][k] = a[j][k] ;
+				a[j][k] = dum ;
+			}
+			vv[imax] = vv[j] ;
+		}
+
+		index[j] =  imax ;
+
+		if (a[j][j] == 0.0) {a[j][j] = 1e-9 ;}
+
+		if (j != (n-1)) /* !? */
+		{
+			dum = 1.0 / a[j][j] ;
+			for (i = (j+1); i<n; i++)
+			{
+				a[i][j] = dum*a[i][j] ;
+			}
+		}
+	}
+
+memFree:
+	free(vv); vv = NULL ;
+	return(rv);
+}
+
+
+/** Decomposition to L/U
+ * @param a matrix (will be modified!)
+ * @param index index vector
+ * @param b right hand side/result vector (will be modified!)
+ * @return status
+ */
+int femLUback(a, index, b, size)
+  double **a ;
+  int     *index ;
+  double  *b ;
+  int      size ;
+{
+	int    rv = 0 ;
+	long   i,ii,ip,j;
+	long   n ;
+	double sum ;
+
+	ii = -1 ;
+  n = size ;
+
+	for (i=0; i<n; i++)
+	{
+		ip  = index[i];
+		sum = b[ip];
+		b[ip] = b[i];
+
+		if (ii > -1) /* means ii > 0 */
+		{
+			for (j=ii; j<i-1; j++)
+			{
+				sum -= a[i][j]*b[j] ;
+			}
+		}
+		else
+		{
+			if (sum)
+			{
+				ii = i ;
+			}
+		}
+		b[i] = sum;
+	}
+
+	for (i=(n-1); i>0; i--) /* ?! */
+	{
+		sum = b[i];
+		for (j=i+1; j<n; j++)
+		{
+			sum -= a[i][j]*b[j] ;
+		}
+		b[i] = (sum / a[i][i] ) ;
+	}
+
+	return(rv);
+}
+
+
+/** Inversion of "a" matrix using L/U
+ * @param a matrix (will be modified!)
+ * @return status
+ */
+int femLUinverse(a, size)
+  double **a ;
+  int      size;
+{
+	int       rv = 0 ;
+  long      i,j ;
+	long      n ;
+	double  *col ;
+	int     *index ;
+	double  **b ;
+
+	col = NULL  ;
+	index = NULL;
+	b = NULL ;
+  n = size ;
+
+  if ((col= (double *)malloc(size*sizeof(double))) == NULL) goto memFree;
+  if ((index= (int *)malloc(size*sizeof(int))) == NULL) goto memFree;
+  if ((b = (double **)malloc(size*sizeof(double *))) != NULL)
+  {
+    for (i=0; i<size; i++) b[i] = (double *)malloc(size*sizeof(double)) ;
+  } else { exit(-1); }
+
+  for (i=0; i<size; i++)
+  {
+    col[i] = 0.0 ;
+    index[i] = 0.0 ;
+    for (j=0; j<size; j++) b[i][j] = 0.0 ;
+  }
+
+
+	if ((rv = femLUdecomp(a, index, size)) != 0){goto memFree;}
+
+  for (j=0; j<n; j++)
+  {
+    for (i=0; i<n; i++) { col[i] = 0.0 ; }
+
+    col[j] = 1.0 ;
+	  if ((rv = femLUback(a, index, col,size)) != 0){goto memFree;}
+
+    for (i=0; i<n; i++) { b[i][j] = col[i] ; }
+  }
+
+  for (i=0; i<n; i++)
+  {
+    for (j=0; j<n; j++)
+    {
+      a[i][j] = b[i][j]  ;
+    }
+  }
+
+memFree:
+	free(col); col = NULL ;
+	free(index); index = NULL ;
+    for (i=0; i<12; i++){free(b[i]); b[i]=NULL;} free(b); b=NULL;
+	return(rv);
+}
+
 
 int femMatInvS(a, size)
   float **a ;
@@ -653,7 +881,8 @@ int femMatInvS(a, size)
 	if ((f1 = (float *)malloc(n*sizeof(float)))==NULL) return(-1);
 	m = n-1;
 
-	val = a[0][0];
+	val = a[0][0]; 
+printf("val = %e\n",val);
   a[0][0] = (1.0 / val) ;
 
 	for (i = 1; i <= m; i++)
@@ -729,7 +958,7 @@ void stiff(eg, lc)
 int eg;
 int lc;
 {
-  int i, j, k, ii, jj, m ;
+  int i, j, k, jj, m ;
   float xi[4];
   float yi[4];
   float A, tuh, xjj, yjj ;
@@ -765,7 +994,9 @@ int lc;
     xi[2] = x_i[n3[i]-1] ;
     yi[2] = y_i[n3[i]-1] ;
     xi[3] = x_i[n4[i]-1] ;
-    yi[4] = y_i[n4[i]-1] ;
+    yi[3] = y_i[n4[i]-1] ;
+
+for (m=0; m<4; m++) { printf(" x,y[%i] = %e, %e\n",m,xi[m],yi[m]); }
     
     A=(xi[1]-xi[0])*(yi[2]-yi[1]);
     if (A <= 0.0) {continue;} /* oops, zero area element */
@@ -817,7 +1048,7 @@ int lc;
       S[j*3+2][3]=-2*xi[j];
       S[j*3+2][4]=-yi[j];
       S[j*3+2][5]=0;
-      S[j*3+2][6]=-pow(3*xi[j],2);
+      S[j*3+2][6]=-3*pow(xi[j],2);
       S[j*3+2][7]=-2*xi[j]*yi[j];
       S[j*3+2][8]=-pow(yi[j],2);
       S[j*3+2][9]=0;
@@ -825,12 +1056,33 @@ int lc;
       S[j*3+2][11]=-pow(yi[j],3);
     }
 
-    femMatInvS(S, 12) ; /* S inversion */
+    /* TODO: print S matrix !!! */
+    for (k=0; k<12; k++)
+    {
+      for (m=0; m<12; m++)
+      {
+        printf("%10.3e ",S[k][m]);
+      }
+      printf("\n");
+    }
 
-    /* TODO: integration should start here */
+    femLUinverse(S,12) ; /* S inversion */
+
+    /* TODO: print Si matrix !!! */
+    printf("Si: \n");
+    for (k=0; k<12; k++)
+    {
+      for (m=0; m<12; m++)
+      {
+        printf("%10.3e ",S[k][m]);
+      }
+      printf("\n");
+    }
+
+
+    /* integration start: */
     for (jj=0; jj<4; jj++)
     {
-
 	    tx = (2*xj[jj]-a-b)/(b-a);
 	    ty = (2*yj[jj]-c-d)/(d-c);
 
@@ -915,7 +1167,7 @@ int lc;
           ke[k][m] += SBDBS[k][m] ;
         }
       }
-    }
+    } /* end of integration */
     /* Multiplication bu area */
     for (k=0; k<12; k++)
     {
@@ -925,8 +1177,19 @@ int lc;
       }
     }
 
+    /* TODO: print K matrix !!! */
+    for (k=0; k<12; k++)
+    {
+      for (m=0; m<12; m++)
+      {
+        printf("%10.3e ",ke[k][m]);
+      }
+      printf("\n");
+    }
+
 
     /* TODO: check! (set ii, jj first!) localisation */
+#if 0
     for (k=0; k<6; k++)
     {
       F_val[ii-1] += fe[k] ;
@@ -936,6 +1199,7 @@ int lc;
         md_K_add(ii, jj, ke[k][j]) ;
       }
     }
+#endif
   }
 }
 
@@ -998,6 +1262,7 @@ float val;
 void disps_and_loads(lc)
 int lc;
 {
+#if 0
   int i ;
 
   for (i=0; i<n_nfors; i++)
@@ -1012,11 +1277,18 @@ int lc;
     if ((d_g[i] > 0)&&(d_g[i] != lc)) continue;
     add_one_disp(d_n[i], d_d[i], d_v[i]);
   }
+#endif
 }
 
 /** Frees all allocated data */
 void free_data()
 {
+  int i ;
+
+  if (S != NULL)
+  {
+    for (i=0; i<12; i++){free(S[i]); S[i]=NULL;} free(S); S=NULL;
+  }
   if (n_nodes > 0)
   {
     free(x_i); free(y_i);
