@@ -1275,7 +1275,7 @@ FILE *fw;
   }
 
   fprintf(fw,"\nElements:\n");
-  fprintf(fw," Num Node1 Node2 Node3 Node4      E             A          nu:           t:           Grp:\n");
+  fprintf(fw," Num Node1 Node2 Node3 Node4      E            nu:         t:        Grp:\n");
   for (i=0; i<n_elems; i++)
   {
     fprintf(fw," %3d   %3d   %3d   %3d   %3d %e %e %e ",i+1,n1[i],n2[i],n3[i],n4[i],E[i],nu[i],tl[i]);
@@ -1321,7 +1321,7 @@ FILE *fw;
   int i;
 
   fprintf(fw,"\nDEFORMATIONS:\n");
-  fprintf(fw," Node  X            Y            Rotation:\n");
+  fprintf(fw," Node       W       Rotation X    Rotation Y:\n");
   for (i=0; i<n_nodes; i++)
   {
     fprintf(fw," %4d %e %e %e\n", i+1, u_val[3*i], u_val[3*i+1], u_val[3*i+2]);
