@@ -603,7 +603,7 @@ int solve_eqs()
     normRes = vec_norm(r, n);
     normX   = vec_norm(u_val, n);
 
-    if (normRes  <= ((1e-3)*((normA*normX) + normB)) ) 
+    if (normRes  <= ((1e-5)*((normA*normX) + normB)) ) 
     {
       converged = 1;
       break;
@@ -947,14 +947,23 @@ int lc;
     }
 
     A=(xi[1]-xi[0])*(yi[2]-yi[1]);
-    if (A <= 0.0) {continue;} /* oops, zero area element */
+    if (A <= 0.0) 
+    {
+      A=(xi[2]-xi[1])*(yi[1]-yi[0]);
+      if (A <=0)
+      {
+        printf("[E]: Yero area element (%i)!\n",i+1);
+        continue;
+      }
+    } /* oops, zero area element */
 
 	  a = min_4(xi);
 	  b = max_4(xi);
 	  c = min_4(yi);
 	  d = max_4(yi);
     
-    tuh = (float)((E[i]*pow(tl[i],3))/(12.0*(1.0-pow(nu[i],2)))) ;
+    /* tuh = (float)((E[i]*pow(tl[i],3))/(12.0*(1.0-pow(nu[i],2)))) ; */
+    tuh = 1.0 ;
 
     D[0][0] = tuh ;
     D[0][1] = tuh * nu[i] ;
@@ -978,30 +987,30 @@ int lc;
       S[j*3][11]=xi[j]*pow(yi[j],3);
 
       S[j*3+1][0]=0;
-      S[j*3+1][1]=0;
-      S[j*3+1][2]=1;
-      S[j*3+1][3]=0;
-      S[j*3+1][4]=xi[j];
-      S[j*3+1][5]=2*yi[j];
-      S[j*3+1][6]=0;
-      S[j*3+1][7]=pow(xi[j],2);
-      S[j*3+1][8]=2*xi[j]*yi[j];
-      S[j*3+1][9]=3*pow(yi[j],2);
-      S[j*3+1][10]=pow(xi[j],3);
-      S[j*3+1][11]=3*xi[j]*pow(yi[j],2);
+      S[j*3+1][1]=1;
+      S[j*3+1][2]=0;
+      S[j*3+1][3]=2.0*xi[j];
+      S[j*3+1][4]=yi[j];
+      S[j*3+1][5]=0 ;
+      S[j*3+1][6]=3.0*pow(xi[j],2);
+      S[j*3+1][7]=2.0*xi[j]*yi[j];
+      S[j*3+1][8]=pow(yi[j],2);
+      S[j*3+1][9]=0 ;
+      S[j*3+1][10]=3.0*pow(xi[j],2)*yi[j];
+      S[j*3+1][11]=pow(yi[j],3);
 
       S[j*3+2][0]=0;
-      S[j*3+2][1]=-1;
-      S[j*3+2][2]=0;
-      S[j*3+2][3]=-2*xi[j];
-      S[j*3+2][4]=-yi[j];
-      S[j*3+2][5]=0;
-      S[j*3+2][6]=-3*pow(xi[j],2);
-      S[j*3+2][7]=-2*xi[j]*yi[j];
-      S[j*3+2][8]=-pow(yi[j],2);
-      S[j*3+2][9]=0;
-      S[j*3+2][10]=-3*pow(xi[j],2)*yi[j];
-      S[j*3+2][11]=-pow(yi[j],3);
+      S[j*3+2][1]=0;
+      S[j*3+2][2]=-1;
+      S[j*3+2][3]=0;
+      S[j*3+2][4]=-xi[j];
+      S[j*3+2][5]=-2.0*yi[j];
+      S[j*3+2][6]=0;
+      S[j*3+2][7]=-pow(xi[j],2);
+      S[j*3+2][8]=-2.0*xi[j]*yi[j];
+      S[j*3+2][9]=-3.0*pow(yi[j],2);
+      S[j*3+2][10]=-pow(xi[j],3);
+      S[j*3+2][11]=-3.0*xi[j]*pow(yi[j],2);
     }
 
     femLUinverse(S,12) ; /* S inversion */
@@ -1019,15 +1028,24 @@ int lc;
       B[0][6] = -6.0*xjj ;
       B[0][7] = -2.0*yjj ;
       B[0][10] = -6.0*xjj*yjj ;
+
       B[1][5] = -2.0 ;
       B[1][8] = -2.0*xjj ;
       B[1][9] = -6.0*yjj ;
       B[1][11] = -6.0*xjj*yjj ;
+
       B[2][4] = -2.0 ;
       B[2][7] = -4.0*xjj ;
       B[2][8] = -4.0*yjj ;
       B[2][10] = -6.0*xjj*xjj ;
       B[2][11] = -6.0*yjj*yjj ;
+
+#if 0
+    printf("\nS[%i] in local coordinates:\n",jj);
+    for (k=0; k<12; k++) { for (m=0; m<12; m++) { printf("%10.3e ",S[k][m]); } printf("\n"); }
+    printf("\nB[%i] in local coordinates:\n",jj);
+    for (k=0; k<3; k++) { for (m=0; m<12; m++) { printf("%10.3e ",B[k][m]); } printf("\n"); }
+#endif
 
       /* ST * BT */
       tuh = 0.0 ;
@@ -1042,6 +1060,10 @@ int lc;
           SB[k][m] = tuh ; tuh = 0.0 ;
         }
       }
+#if 0
+    printf("\nSB[%i] in local coordinates:\n",jj);
+    for (k=0; k<12; k++) { for (m=0; m<3; m++) { printf("%10.3e ",SB[k][m]); } printf("\n"); }
+#endif
 
       /* ST * BT * D */
       tuh = 0.0 ;
@@ -1057,6 +1079,14 @@ int lc;
         }
       }
 
+#if 0
+    printf("\nD[%i] in local coordinates:\n",jj);
+    for (k=0; k<3; k++) { for (m=0; m<3; m++) { printf("%10.3e ",D[k][m]); } printf("\n"); }
+
+    printf("\nSBD[%i] in local coordinates:\n",jj);
+    for (k=0; k<12; k++) { for (m=0; m<3; m++) { printf("%10.3e ",SBD[k][m]); } printf("\n"); }
+#endif
+
       /* ST * BT * D * B */
       tuh = 0.0 ;
       for (k=0; k<12; k++) /* first dim */
@@ -1071,6 +1101,11 @@ int lc;
         }
       }
 
+#if 0
+    printf("\nSBDB[%i] in local coordinates:\n",jj);
+    for (k=0; k<12; k++) { for (m=0; m<12; m++) { printf("%10.3e ",SBDB[k][m]); } printf("\n"); }
+#endif
+
       /* ST * BT * D * B * S */
       tuh = 0.0 ;
       for (k=0; k<12; k++) /* first dim */
@@ -1079,11 +1114,19 @@ int lc;
         {
           for (j=0; j<12; j++) /* middle dim */
           {
-            tuh += SBDB[k][j]*S[j][m] ;
+            tuh += SBDB[k][j]*S[j][m] ; 
+#if 0
+            printf("[%i,%i,%i]= (%e * %e)%e\n",k,m,j,SBDB[k][j],S[j][m],tuh);
+#endif
           }
           SBDBS[k][m] = tuh ; tuh = 0.0 ;
         }
       }
+
+#if 0
+    printf("\nSBDBS[%i] in local coordinates:\n",jj);
+    for (k=0; k<12; k++) { for (m=0; m<12; m++) { printf("%10.3e ",SBDBS[k][m]); } printf("\n"); }
+#endif
 
       /* addition to the Ke (ke): */
       for (k=0; k<12; k++)
@@ -1094,6 +1137,7 @@ int lc;
         }
       }
     } /* end of integration */
+
     /* Multiplication bu area */
     for (k=0; k<12; k++)
     {
@@ -1104,9 +1148,24 @@ int lc;
     }
 
     /* TODO: print K matrix !!! */
+#if 0
     printf("\nKe[%i] in local coordinates:\n",i+1);
     for (k=0; k<12; k++) { for (m=0; m<12; m++) { printf("%10.3e ",ke[k][m]); } printf("\n"); }
+#endif
 
+    /* TODO check K matrix */
+    for (k=0; k<12; k++) 
+    { 
+      for (m=0; m<12; m++) 
+      { 
+        if (fabs((ke[k][m]-ke[m][k])/ke[m][k]) > 1e-6)
+        {
+          printf("Problem in [%i,%i]> %10.3e vs %10.3e\n",k,m,ke[k][m],ke[m][k]); 
+        }
+      }
+    }
+
+    tuh = (float)((E[i]*pow(tl[i],3))/(12.0*(1.0-pow(nu[i],2)))) ;
 
     for (k=0; k<4; k++) /* localisation field */
     {
@@ -1119,7 +1178,7 @@ int lc;
     {
       for (m=0; m<12; m++)
       {
-        md_K_add(loc[k], loc[m], ke[k][m]) ;
+        md_K_add(loc[k], loc[m], ke[k][m]*tuh) ;
       }
     }
   }
