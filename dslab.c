@@ -1223,7 +1223,7 @@ void free_data()
   }
   if (n_elems > 0)
   {
-    free(x_i); free(y_i); free(n1); free(n2); free(n3); free(n4);free(E);free(nu);free(tl);free(e_g);
+     free(n1); free(n2); free(n3); free(n4);free(E);free(nu);free(tl);free(e_g);
   }
   if (n_disps > 0)
   {
