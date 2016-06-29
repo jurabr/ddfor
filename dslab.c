@@ -34,12 +34,12 @@ int    n_elems = 0 ;
 int    n_disps = 0 ;
 int    n_nfors = 0 ;
 
-double *x_i = NULL ;
-double *y_i = NULL ;
+float *x_i = NULL ;
+float *y_i = NULL ;
 
-double *E = NULL ;
-double *nu = NULL ;
-double *tl = NULL ;
+float *E = NULL ;
+float *nu = NULL ;
+float *tl = NULL ;
 int   *n1 = NULL ;
 int   *n2 = NULL ;
 int   *n3 = NULL ;
@@ -48,40 +48,40 @@ int   *e_g = NULL ; /* element group */
 
 int   *d_n = NULL ; /* node */
 int   *d_d = NULL ; /* direction 1=w 2=rotx 3=roty */
-double *d_v = NULL ; /* size */
+float *d_v = NULL ; /* size */
 int   *d_g = NULL ; /* load group */
 
 int   *f_n = NULL ; /* node */
 int   *f_d = NULL ; /* direction 1=fx 2=fy 3=m */
-double *f_v = NULL ; /* size */
+float *f_v = NULL ; /* size */
 int   *f_g = NULL ; /* load group */
 
 /* solution variables: */
-double  ke[12][12] ;
-double  B[3][12] ;
-double  SB[12][3] ;
-double  SBD[12][3] ;
-double  SBDB[12][12] ;
-double  SBDBS[12][12] ;
-double  D[3][3] ;
-double  fe[12];
-double  ue[12];
-double  **S;
+float  ke[12][12] ;
+float  B[3][12] ;
+float  SB[12][3] ;
+float  SBD[12][3] ;
+float  SBDB[12][12] ;
+float  SBDBS[12][12] ;
+float  D[3][3] ;
+float  fe[12];
+float  ue[12];
+float  **S;
 
 int    K_len    = 0 ;
 int    K_size   = 0 ;
 int   *K_sizes  = NULL ; /* lenghts of K's rows */
 int   *K_from   = NULL ;
 int   *K_cols   = NULL ;
-double *K_val    = NULL ;
-double *F_val    = NULL ;
-double *u_val    = NULL ;
+float *K_val    = NULL ;
+float *F_val    = NULL ;
+float *u_val    = NULL ;
 
-double *M    = NULL ;
-double *r    = NULL ;
-double *z    = NULL ;
-double *p    = NULL ;
-double *q    = NULL ;
+float *M    = NULL ;
+float *r    = NULL ;
+float *z    = NULL ;
+float *p    = NULL ;
+float *q    = NULL ;
 
 /** Reading of data from file */
 int read_data(fw)
@@ -97,19 +97,19 @@ FILE *fw ;
     return(-1);
   }
 
-  if ((S = (double **)malloc(12*sizeof(double *))) != NULL)
+  if ((S = (float **)malloc(12*sizeof(float *))) != NULL)
   {
-    for (i=0; i<12; i++) S[i] = (double *)malloc(12*sizeof(double)) ;
+    for (i=0; i<12; i++) S[i] = (float *)malloc(12*sizeof(float)) ;
   } else { exit(-1); }
 
   /* allocate data for nodes */
-  if ((x_i=(double *)malloc(n_nodes*sizeof(double))) == NULL)
+  if ((x_i=(float *)malloc(n_nodes*sizeof(float))) == NULL)
   {
     fprintf(stderr,"Can't allocate X coordinates!\n");
     return(-2);
   }
 
-  if ((y_i=(double *)malloc(n_nodes*sizeof(double))) == NULL)
+  if ((y_i=(float *)malloc(n_nodes*sizeof(float))) == NULL)
   {
     free(x_i);
     fprintf(stderr,"Can't allocate Y coordinates!\n");
@@ -122,7 +122,7 @@ FILE *fw ;
 #endif
   for (i=0; i<n_nodes; i++)
   {
-    fscanf(fw,"%lf %lf", &x_i[i], &y_i[i]) ;
+    fscanf(fw,"%e %e", &x_i[i], &y_i[i]) ;
   }
 #ifdef UI
   fprintf(stderr,"  Have %d coordinates.\n",n_nodes);
@@ -168,20 +168,20 @@ FILE *fw ;
     return(-2);
   }
 
-  if ((E=(double *)malloc(n_elems*sizeof(double))) == NULL)
+  if ((E=(float *)malloc(n_elems*sizeof(float))) == NULL)
   {
     free(x_i); free(y_i); free(n1); free(n2); free(n3); free(n4);
     fprintf(stderr,"Can't allocate stifnesses!\n");
     return(-2);
   }
-  if ((nu=(double *)malloc(n_elems*sizeof(double))) == NULL)
+  if ((nu=(float *)malloc(n_elems*sizeof(float))) == NULL)
   {
     free(x_i); free(y_i); free(n1); free(n2); free(n3); free(n4);free(E);
     fprintf(stderr,"Can't allocate areas!\n");
     return(-2);
   }
 
-  if ((tl=(double *)malloc(n_elems*sizeof(double))) == NULL)
+  if ((tl=(float *)malloc(n_elems*sizeof(float))) == NULL)
   {
     free(x_i); free(y_i); free(n1); free(n2); free(n3); free(n4);free(E);free(nu);
     fprintf(stderr,"Can't allocate areas!\n");
@@ -202,7 +202,7 @@ FILE *fw ;
 #endif
   for (i=0; i<n_elems; i++)
   {
-    fscanf(fw,"%d %d %d %d %lf %lf %lf %d",
+    fscanf(fw,"%d %d %d %d %e %e %e %d",
       &n1[i],&n2[i],&n3[i],&n4[i],&E[i],&nu[i],&tl[i],&e_g[i]) ;
   }
 #ifdef UI
@@ -236,7 +236,7 @@ FILE *fw ;
     fprintf(stderr,"Can't allocate types of supports!\n");
     return(-2);
   }
-  if ((d_v=(double *)malloc(n_disps*sizeof(double))) == NULL)
+  if ((d_v=(float *)malloc(n_disps*sizeof(float))) == NULL)
   {
     free(x_i); free(y_i); free(n1); free(n2); free(n3); free(n4);free(E);free(nu);free(tl);free(e_g);
     free(d_n);free(d_d);
@@ -258,7 +258,7 @@ FILE *fw ;
 #endif
   for (i=0; i<n_disps; i++)
   {
-    fscanf(fw,"%d %d %lf %d",&d_n[i], &d_d[i], &d_v[i], &d_g[i]) ;
+    fscanf(fw,"%d %d %e %d",&d_n[i], &d_d[i], &d_v[i], &d_g[i]) ;
   }
 #ifdef UI
   fprintf(stderr,"  Have %d supports.\n",n_disps);
@@ -293,7 +293,7 @@ FILE *fw ;
     fprintf(stderr,"Can't allocate types of forces!\n");
     return(-2);
   }
-  if ((f_v=(double *)malloc(n_nfors*sizeof(double))) == NULL)
+  if ((f_v=(float *)malloc(n_nfors*sizeof(float))) == NULL)
   {
     free(x_i); free(y_i); free(n1); free(n2); free(n3); free(n4);free(E);free(nu);free(tl);free(e_g);
     free(d_n);free(d_d);free(d_v);free(d_g);
@@ -317,7 +317,7 @@ FILE *fw ;
 #endif
   for (i=0; i<n_nfors; i++)
   {
-    fscanf(fw,"%d %d %lf %d",&f_n[i], &f_d[i], &f_v[i], &f_g[i]) ;
+    fscanf(fw,"%d %d %e %d",&f_n[i], &f_d[i], &f_v[i], &f_g[i]) ;
   }
 #ifdef UI
   fprintf(stderr,"  Have %d forces in nodes.\n",n_nfors);
@@ -376,7 +376,6 @@ void free_sol_data()
   if (z != NULL )free(z);
   if (p != NULL )free(p);
   if (q != NULL )free(q);
-  
 }
 
 
@@ -390,14 +389,14 @@ int alloc_kf()
 
   if ((K_sizes = (int *)malloc(k_size*sizeof(int)))   == NULL) { goto memFree;}
   if ((K_from  = (int *)malloc(k_size*sizeof(int)))   == NULL) {goto memFree;} 
-  if ((F_val = (double *)malloc(k_size*sizeof(double))) == NULL) {goto memFree;} 
-  if ((u_val = (double *)malloc(k_size*sizeof(double))) == NULL) {goto memFree;} 
+  if ((F_val = (float *)malloc(k_size*sizeof(float))) == NULL) {goto memFree;} 
+  if ((u_val = (float *)malloc(k_size*sizeof(float))) == NULL) {goto memFree;} 
 
-  if ((M   = (double *)malloc(k_size*sizeof(double))) == NULL) {goto memFree;} 
-  if ((r   = (double *)malloc(k_size*sizeof(double))) == NULL) {goto memFree;} 
-  if ((z   = (double *)malloc(k_size*sizeof(double))) == NULL) {goto memFree;} 
-  if ((p   = (double *)malloc(k_size*sizeof(double))) == NULL) {goto memFree;} 
-  if ((q   = (double *)malloc(k_size*sizeof(double))) == NULL) {goto memFree;} 
+  if ((M   = (float *)malloc(k_size*sizeof(float))) == NULL) {goto memFree;} 
+  if ((r   = (float *)malloc(k_size*sizeof(float))) == NULL) {goto memFree;} 
+  if ((z   = (float *)malloc(k_size*sizeof(float))) == NULL) {goto memFree;} 
+  if ((p   = (float *)malloc(k_size*sizeof(float))) == NULL) {goto memFree;} 
+  if ((q   = (float *)malloc(k_size*sizeof(float))) == NULL) {goto memFree;} 
 
   K_len = 0 ;
 
@@ -456,7 +455,7 @@ int alloc_kf()
   K_len = sum ;
 
   if ((K_cols = (int *)malloc(K_len*sizeof(int))) == NULL) { goto memFree ; } 
-  if ((K_val = (double *)malloc(K_len*sizeof(double))) == NULL) { goto memFree ; } 
+  if ((K_val = (float *)malloc(K_len*sizeof(float))) == NULL) { goto memFree ; } 
 
   for (i=0; i<K_len; i++)
   {
@@ -473,11 +472,11 @@ memFree:
   return(-1);
 }
 
-double norm_K()
+float norm_K()
 {
   int i,j ;
-  double MaxNorm = 0.0 ;
-  double Norm    = 0.0 ;
+  float MaxNorm = 0.0 ;
+  float Norm    = 0.0 ;
   
   for (i=0; i<(3*n_nodes); i++)
   {
@@ -493,12 +492,12 @@ double norm_K()
   return(Norm);
 }
 
-double vec_norm(a, len)
-double *a;
+float vec_norm(a, len)
+float *a;
 int len;
 {
   int i ;
-  double Norm    = 0.0 ;
+  float Norm    = 0.0 ;
   
   for (i=0; i<len; i++) { Norm += (a[i]*a[i]); }
   return(sqrt(Norm));
@@ -506,10 +505,10 @@ int len;
 
 int solve_eqs()
 {
-  double ro, alpha, beta;
-  double roro = 0.0 ;
-  double normRes, normX, normA, normB;
-  double mval ;
+  float ro, alpha, beta;
+  float roro = 0.0 ;
+  float normRes, normX, normA, normB;
+  float mval ;
   int   converged = 0;
   int   n = 0;
   int   i,j,k;
@@ -628,7 +627,7 @@ int solve_eqs()
 void md_K_add(row, col, val)
 int row;
 int col;
-double val;
+float val;
 {
   int i ;
 
@@ -659,7 +658,7 @@ double val;
  * @return status
  */
 int femLUdecomp(a, index, size)
-  double **a ;
+  float **a ;
   int     *index ;
   int      size ;
 {
@@ -667,12 +666,12 @@ int femLUdecomp(a, index, size)
 	long i, j, k;
   long imax = 0  ;
 	long n;
-	double big,dum,sum,temp;
-	double *vv ;
+	float big,dum,sum,temp;
+	float *vv ;
 
   n = size ;
 	vv = NULL ;
-  if ((vv= (double *)malloc(size*sizeof(double))) == NULL) goto memFree;
+  if ((vv= (float *)malloc(size*sizeof(float))) == NULL) goto memFree;
   for (i=0; i<size; i++) vv[i] = 0.0 ;
 
 	for (i=0; i<n; i++)
@@ -761,15 +760,15 @@ memFree:
  * @return status
  */
 int femLUback(a, index, b, size)
-  double **a ;
+  float **a ;
   int     *index ;
-  double  *b ;
+  float  *b ;
   int      size ;
 {
 	int    rv = 0 ;
 	long   i,ii,ip,j;
 	long   n ;
-	double sum ;
+	float sum ;
 
 	ii = -1 ;
   n = size ;
@@ -816,26 +815,26 @@ int femLUback(a, index, b, size)
  * @return status
  */
 int femLUinverse(a, size)
-  double **a ;
+  float **a ;
   int      size;
 {
 	int       rv = 0 ;
   long      i,j ;
 	long      n ;
-	double  *col ;
+	float  *col ;
 	int     *index ;
-	double  **b ;
+	float  **b ;
 
 	col = NULL  ;
 	index = NULL;
 	b = NULL ;
   n = size ;
 
-  if ((col= (double *)malloc(size*sizeof(double))) == NULL) goto memFree;
+  if ((col= (float *)malloc(size*sizeof(float))) == NULL) goto memFree;
   if ((index= (int *)malloc(size*sizeof(int))) == NULL) goto memFree;
-  if ((b = (double **)malloc(size*sizeof(double *))) != NULL)
+  if ((b = (float **)malloc(size*sizeof(float *))) != NULL)
   {
-    for (i=0; i<size; i++) b[i] = (double *)malloc(size*sizeof(double)) ;
+    for (i=0; i<size; i++) b[i] = (float *)malloc(size*sizeof(float)) ;
   } else { exit(-1); }
 
   for (i=0; i<size; i++)
@@ -875,22 +874,22 @@ memFree:
 
 
 /** Support function for Ke computation */
-double min_4(xi)
-double *xi;
+float min_4(xi)
+float *xi;
 {
   int i; 
-  double min ;
+  float min ;
   
   min = xi[0] ;
   for (i=1; i<=4; i++) if (xi[i] < min) min = xi[i] ;
   return(min);
 }
 
-double max_4(xi)
-double *xi;
+float max_4(xi)
+float *xi;
 {
   int i; 
-  double max ;
+  float max ;
   
   max = xi[0] ;
   for (i=1; i<=4; i++) if (xi[i] > max) max = xi[i] ;
@@ -912,12 +911,12 @@ int eg;
 int lc;
 {
   int i, j, k, ii, jj, m ;
-  double xi[4];
-  double yi[4];
-  double A, tuh, xjj, yjj ;
-  double a, b, c, d, tx, ty ;
-  double xj[] = {-0.5774,  0.5774, 0.5774, -0.5774} ;
-  double yj[] = {-0.5774, -0.5774, 0.5774,  0.5774} ;
+  float xi[4];
+  float yi[4];
+  float A, tuh, xjj, yjj ;
+  float a, b, c, d, tx, ty ;
+  float xj[] = {-0.5774,  0.5774, 0.5774, -0.5774} ;
+  float yj[] = {-0.5774, -0.5774, 0.5774,  0.5774} ;
   int   nodes[4] ;
   int   loc[12];
 
@@ -955,7 +954,7 @@ int lc;
 	  c = min_4(yi);
 	  d = max_4(yi);
     
-    tuh = (double)((E[i]*pow(tl[i],3))/(12.0*(1.0-pow(nu[i],2)))) ;
+    tuh = (float)((E[i]*pow(tl[i],3))/(12.0*(1.0-pow(nu[i],2)))) ;
 
     D[0][0] = tuh ;
     D[0][1] = tuh * nu[i] ;
@@ -1130,7 +1129,7 @@ int lc;
 void add_one_disp(node, dir, val)
 int   node;
 int   dir;
-double val;
+float val;
 {
   int i,j,n ;
   int row ;
@@ -1173,7 +1172,7 @@ double val;
 void add_one_force(node, dir, val)
 int   node;
 int   dir;
-double val;
+float val;
 {
   int row ;
 
@@ -1238,11 +1237,11 @@ void free_data()
 
 
 void u_to_ue(s,c)
-double s ;
-double c ;
+float s ;
+float c ;
 {
   int i,j ;
-  double fval ;
+  float fval ;
 
   for (i=0; i<6; i++) { ue[i] = 0.0 ; }
   
