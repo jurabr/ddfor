@@ -12,6 +12,9 @@ ddfor: ddfor.c
 dslab: dslab.c
 	$(CC) $(CFLAGS) dslab.c $(LIBS) -o $(@)
 
+dgen: dgen.c
+	$(CC) $(CFLAGS) dgen.c $(LIBS) -o $(@)
+
 ddfor_a.o: ddfor.c
 	$(CC) $(CFLAGS) -DGR ddfor.c -c -o ddfor_a.o
 
