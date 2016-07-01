@@ -78,23 +78,22 @@ int comp_out(FILE *fw)
   dx = a/(float)n ;
   dy = b/(float)m ;
 
-  for (i=0; i<(n+1); i++)
+  for (j=0; j<(m+1); j++)
   {
-    y = (float)i*dy ;
-    for (j=0; j<(m+1); j++)
+    y = (float)j*dy ;
+    for (i=0; i<(n+1); i++)
     {
-      x = (float)j*dx ;
+      x = (float)i*dx ;
       fprintf(fw,"%e %e\n",x,y); 
     }
   }
 
-
   /* elements: */
   fprintf(fw,"%i\n", (n)*(m));
 
-  for (i=0; i<n; i++)
+  for (j=0; j<m; j++)
   {
-    for (j=0; j<m; j++)
+    for (i=0; i<n; i++)
     {
       n1 = (j*(n+1))+i+1 ;
       n2 = n1 + 1   ;
@@ -104,6 +103,18 @@ int comp_out(FILE *fw)
     }
   }
 
+	/* supports: */
+  fprintf(fw,"%i\n", (n*2)+(m*2));
+	/* up and down */
+	for (i=0; i<n+1; i++) { fprintf(fw,"%i 1 0 %i\n",i+1,gr); }
+	for (i=0; i<n+1; i++) { fprintf(fw,"%i 1 0 %i\n",(m*(n+1))+i+1,gr); }
+	/* left: */
+	for (i=1; i<m; i++) { fprintf(fw,"%i 1 0 %i\n",i*(n+1)+1,gr); }
+	for (i=1; i<m; i++) { fprintf(fw,"%i 1 0 %i\n",(i+1)*(n+1),gr); }
+
+	/* force in the middle : */
+	n1 = (int)(((n+1)*(m+1))/2+1);
+  fprintf(fw,"1\n%i 1 %e %i\n",n1,F,gr); 
 
   return(0);
 }
