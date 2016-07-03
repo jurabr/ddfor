@@ -4,10 +4,16 @@ DEBUG=-O0 -Wall -pedantic -DLARGE -DUI -g
 CFLAGS=$(DEBUG)
 LIBS=-lm
 
-all: ddfor aaem bipe bbet btor
+all: ddfor 
 
 ddfor: ddfor.c
 	$(CC) $(CFLAGS) ddfor.c $(LIBS) -o $(@)
+
+dslab: dslab.c
+	$(CC) $(CFLAGS) dslab.c $(LIBS) -o $(@)
+
+dgen: dgen.c
+	$(CC) $(CFLAGS) dgen.c $(LIBS) -o $(@)
 
 ddfor_a.o: ddfor.c
 	$(CC) $(CFLAGS) -DGR ddfor.c -c -o ddfor_a.o
@@ -30,4 +36,4 @@ btor: btor.c
 
 
 clean:
-	-rm -f ddfor aaem bipe bbet btor *.o core
+	-rm -f ddfor dslab aaem bipe bbet btor *.o core

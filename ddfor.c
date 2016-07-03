@@ -59,11 +59,15 @@ int   *f_d = NULL ; /* direction 1=fx 2=fy 3=m */
 float *f_v = NULL ; /* size */
 int   *f_g = NULL ; /* load group */
 
-int   *l_e = NULL ; /* node */
+int   *l_e = NULL ; /* element */
 int   *l_d = NULL ; /* direction 1=x 2=y, 3=x global, 4=y global */
 float *l_v1 = NULL ; /* size at beginning */
 float *l_v2 = NULL ; /* size at end */
 int   *l_g  = NULL ; /* load group */
+
+double **eig_val = NULL ; /* eigenvectors for stability and modal */
+double *lambda = NULL ;   /* eigenvalues for stability and modal  */
+int   n_modal = 1 ;       /* no. of mode shapes */
 
 /* solution variables: */
 double  ke[6][6] ;
@@ -454,6 +458,7 @@ FILE *fw ;
 /** free K,F */
 void free_sol_data()
 {
+  int i ;
   if (F_val != NULL )free(F_val);
   if (u_val != NULL )free(u_val);
   if (K_sizes != NULL )free(K_sizes);
@@ -478,6 +483,16 @@ void free_sol_data()
     {
       if (EE !=NULL)free(EE);
       if (E1 !=NULL)free(E1);
+    }
+
+    if (sol_mode < 3)
+    {
+      for (i=0; i<n_modal; i++)
+      {
+        free(eig_val[i]); eig_val[i] = NULL ;
+      }
+      free(eig_val); eig_val = NULL ;
+      free(lambda); lambda = NULL ;
     }
   }
 }
@@ -690,6 +705,28 @@ int alloc_kf()
   }
 
   K_size = k_size ;
+
+  if ((sol_mode >= 1) && (sol_mode <= 2))
+  {
+    if ((eig_val = (double **)malloc(n_modal*sizeof(double *))) == NULL)
+    {
+      fprintf(stderr,"Out of memory for eigen data!\n"); goto memFree ;
+    }
+    for (i=0; i<n_modal; i++)
+    {
+      if ((eig_val[i] = (double *)malloc((K_size*sizeof(double)))) == NULL)
+      {
+        fprintf(stderr,"Out of memory for eigen data!\n"); goto memFree ;
+      }
+      for (j=0; j<K_size; j++) { eig_val[i][j] = 0.0 ; }
+    }
+
+    if ((lambda = (double *)malloc(n_modal*sizeof(double))) == NULL)
+    {
+      fprintf(stderr,"Out of memory for lambda data!\n"); goto memFree ;
+    }
+  }
+  
   return(0);
 memFree:
   fprintf(stderr,"Not enough memory!");
@@ -1602,8 +1639,8 @@ int epos ;
 }
 
 
-/** computes and prints results */
-void results(fw)
+/** computes and prints structure description */
+void res_struct(fw)
 FILE *fw;
 {
   int i;
@@ -1676,6 +1713,13 @@ FILE *fw;
     }
     fprintf(fw," %e..%e %3d\n",l_v1[i],l_v2[i],l_g[i]);
   }
+}
+
+/** computes and prints results */
+void results(fw)
+FILE *fw;
+{
+  int i;
 
   fprintf(fw,"\nDEFORMATIONS:\n");
   fprintf(fw," Node  X            Y            Rotation:\n");
@@ -1714,6 +1758,30 @@ FILE *fw;
     fprintf(fw," %e\n",(-1.0)*d_v[i]);
   }
 }
+
+/** computes and prints results of eigenvalue computing */
+void eiresults(fw)
+FILE *fw;
+{
+  int i;
+
+  if (sol_mode == 1)
+  {
+    fprintf(fw,"\nMULTIPLIER FOR STABILITY: %4.1f\n",lambda[0]);
+  }
+  else
+  {
+    fprintf(fw,"\nMODAL FREQUENCIES:\n");
+    fprintf(fw,"==================\n");
+    for (i=0; i<n_modal; i++)
+    {
+      fprintf(fw," %3i: %f\n",i+1,lambda[i]);
+    }
+    fprintf(fw,"\n");
+  }
+}
+
+
 
 /** computes and prints internal forces in elements */
 void eint_results(fw)
@@ -1994,6 +2062,7 @@ int   mode;
   double x_e, y_e, dx, dy ;
   char   **fld = NULL;
   char   symbol;
+  char   fsymbol;
   char   str[5];
   int i, j;
   int ii, jj;
@@ -2061,7 +2130,7 @@ int   mode;
       ii =  (int)((x_e-min_x) * mult_x) + 1  ;
       jj = size_y - ( (int)((y_e-min_y) * mult_y) + 1 ) ;
       fld[jj][ii] = symbol ;
-      
+
       /* hinges: */
       if ((is==2)&&((type[i]==1)||(type[i]==3))) fld[jj][ii] = 'o' ;
       if ((is==(ilen-2))&&((type[i]==2)||(type[i]==3))) fld[jj][ii] = 'o' ;
@@ -2111,8 +2180,8 @@ int   mode;
        {
           if (fld[jj][ii] == 'A' )
           {
-             fld[jj-1][ii] = 'A' ;
-             fld[jj][ii] = 'X'  ;
+             fld[jj][ii] = 'A' ;
+             fld[jj-1][ii] = 'X'  ;
            }
            else  fld[jj][ii] = 'X' ;
        }
@@ -2127,19 +2196,73 @@ int   mode;
     jj = size_y - ( (int)((y_i[i]-min_y) * mult_y) + 1 ) ;
     if (mode != 0) 
     {
-      switch (f_d[j]) /* TODO: sizes, orientation */
+      switch (f_d[j]) /* TODO: sizes */
       {
-        case 1: fld[jj][ii] = '=' ;
-                fld[jj][ii+1] = '>' ;
+        case 1: if (f_v[j] > 0.0) 
+                     { fld[jj][ii] = '=' ; fld[jj][ii+1] = '>' ; }
+                else { fld[jj][ii] = '<' ; fld[jj][ii+1] = '=' ; }
                 break ;
-        case 2: fld[jj-1][ii] = '|'  ;
-                fld[jj][ii] = 'V' ;
+        case 2: if (f_v[j] > 0.0)
+                     { fld[jj-1][ii] = '|'  ; fld[jj][ii] = 'V' ; } 
+                else { fld[jj-1][ii] = '^'  ; fld[jj][ii] = '|' ; } 
                 break ;
-        case 3: fld[jj][ii] = 'M'  ;
+        case 3: if (f_v[j] > 0.0)
+                     { fld[jj][ii] = '_'  ; fld[jj][ii+1] = '^'  ; }
+                else { fld[jj][ii] = '^'  ; fld[jj][ii+1] = '_'  ; }
                 break ;
       }
     }
   }
+
+  /* plot symbol for element loads */
+  if (mode == -1) {
+  for (j=0; j<n_eload; j++)
+  {
+    fsymbol = ' ' ;
+    switch (l_d[j])
+    {
+      case 1: if (l_v1[j] > 0.0) { fsymbol = '>' ; }
+                else             { fsymbol = '<' ; }  
+              break ;
+      case 2: if (l_v1[j] > 0.0) { fsymbol = 'V' ; }
+                else             { fsymbol = '^' ; }  
+              break ;
+    }
+      
+    i = l_e[j] - 1 ;
+    /* dx and dy computation */
+    x_e =  (x_i[n2[i]-1] - x_i[n1[i]-1]) ;
+    y_e =  (y_i[n2[i]-1] - y_i[n1[i]-1]) ;
+    symbol = '*';
+    if (fabs(x_e) < 1e-6) symbol = '|' ;
+    if (fabs(y_e) < 1e-6) symbol = '-' ;
+    if (symbol == '*')
+    {
+      if ((y_e*x_e) > 0.0) symbol = '/' ;
+      else                 symbol ='\\';
+    }
+    /* gfx lenght of element */
+    ii =  (int)(fabs(x_e) * mult_x) + 1  ;
+    jj =  (int)(fabs(y_e) * mult_y) + 1 ;
+    ilen = (int)(sqrt(pow((float)ii,2) + pow((float)jj,2))) ;
+    dx = x_e ; dy = y_e ;
+    for (is=1; is<ilen; is++)
+    {
+      x_e = ((float)is/(float)ilen)*dx + x_i[n1[i]-1] ;
+      y_e = ((float)is/(float)ilen)*dy + y_i[n1[i]-1] ;
+      ii =  (int)((x_e-min_x) * mult_x) + 1  ;
+      jj = size_y - ( (int)((y_e-min_y) * mult_y) + 1 ) ;
+
+      switch (symbol)
+      {
+        case '-': fld[jj-1][ii] = fsymbol ; break ;
+        case '|': fld[jj][ii+1] = fsymbol ; break ;
+        case '/': fld[jj-1][ii+1] = fsymbol ; break ; 
+        case '\\': fld[jj-1][ii+1] = fsymbol ; break  ;
+      }
+    }
+  }
+  } /* mode == -1 */
  
 
   /* plot data: */  
@@ -2162,6 +2285,26 @@ int   mode;
 }
 #endif
 
+/** Multiplies M matrix by given vector */
+void M_vec_mul(vec, res)
+double *vec ;
+double *res ;
+{
+  int k, j ;
+  double mval ;
+
+  for (k=0; k<K_size; k++) /* Mu = M*u ... initial z1 */
+  {
+    mval = 0.0 ;
+    for (j=0; j<K_sizes[k]; j++)
+    {
+      if  (K_cols[K_from[k]+j] < 0) {break;}
+      mval += M_val[K_from[k]+j] * vec[K_cols[K_from[k]+j]];
+    }
+    res[k] = mval ;
+  }
+}
+
 /** Computation of eigenvalues */
 int inv_iter(num_res)
   int num_res;
@@ -2174,34 +2317,11 @@ int inv_iter(num_res)
   double omega0 = 0.0 ;
   double c, mval ;
   double max_iter = 10 ;
-  double **eig_val = NULL ;
-
-  if ((eig_val = (double **)malloc(num_res*sizeof(double *))) == NULL)
-  {
-    fprintf(stderr,"Out of memory for eigen data!\n"); return(rv);
-  }
-  for (i=0; i<num_res; i++)
-  {
-    if ((eig_val[i] = (double *)malloc((K_size*sizeof(double)))) == NULL)
-    {
-      fprintf(stderr,"Out of memory for eigen data!\n"); return(rv);
-    }
-    for (j=0; j<K_size; j++) { eig_val[i][j] = 0.0 ; }
-  }
 
   omega0  = 0.0 ;
   omega   = 0.0 ;
 
-  for (k=0; k<K_size; k++) /* Mu = M*u ... initial z1 */
-  {
-    mval = 0.0 ;
-    for (j=0; j<K_sizes[k]; j++)
-    {
-      if  (K_cols[K_from[k]+j] < 0) {break;}
-      mval += M_val[K_from[k]+j] * u_val[K_cols[K_from[k]+j]];
-    }
-    Mu_val[k] = mval ;
-  }
+  M_vec_mul(u_val, Mu_val);
 
   for (j=1; j<=num_res; j++) /* main loop*/
   {
@@ -2212,6 +2332,9 @@ int inv_iter(num_res)
     {
       if (j > 1)
       {
+        om_top = 0.0 ;
+        om_bot = 0.0 ;
+
         /* Gram-Schmidt: */
         for(jj=0;jj<K_size;jj++)
         {
@@ -2219,16 +2342,8 @@ int inv_iter(num_res)
           Fr_val[jj] = 0.0;
           Mu_val[jj] = 0.0;
         }
-        for (k=0; k<K_size; k++) /* Mu = M*u ... initial z1 */
-        {
-          mval = 0.0 ;
-          for (jj=0; jj<K_sizes[k]; jj++)
-          {
-            if  (K_cols[K_from[k]+jj] < 0) {break;}
-            mval += M_val[K_from[k]+jj] * u_val[K_cols[K_from[k]+jj]];
-          }
-          Mu_val[k] = mval ;
-        }
+        M_vec_mul(u_val, Mu_val);
+
         for (jj=0; jj<(j-1); jj++)
         {
           c = 0.0 ;
@@ -2240,16 +2355,7 @@ int inv_iter(num_res)
           F_val[k] = u_val[k] - Fr_val[k] ;
           Mu_val[k] = 0.0 ;
         }
-        for (k=0; k<K_size; k++) /* Mu = M*F ... z1 for j>=2 */
-        {
-          mval = 0.0 ;
-          for (jj=0; jj<K_sizes[k]; jj++)
-          {
-            if  (K_cols[K_from[k]+jj] < 0) {break;}
-            mval += M_val[K_from[k]+jj] * F_val[K_cols[K_from[k]+jj]];
-          }
-          Mu_val[k] = mval ;
-        }
+        M_vec_mul(F_val, Mu_val);
       }
       for (k=0; k<K_size; k++) /* switch data for solve_eqs: Mu -> F */
       {
@@ -2265,16 +2371,8 @@ int inv_iter(num_res)
         Mu_val[k] = mval ;
       }
 
-      for (k=0; k<K_size; k++) /* Mu = uu (eig_x) */
-      {
-        mval = 0.0 ;
-        for (jj=0; jj<K_sizes[k]; jj++)
-        {
-          if  (K_cols[K_from[k]+jj] < 0) {break;}
-          mval += M_val[K_from[k]+jj] * u_val[K_cols[K_from[k]+jj]];
-        }
-        uu_val[k] = mval ;
-      }
+      M_vec_mul(u_val, uu_val);
+      
       for (k=0; k<K_size; k++) { om_top += u_val[k]*Mu_val[k] ; }
       for (k=0; k<K_size; k++) { om_bot += u_val[k]*uu_val[k] ; }
       if (fabs(om_bot) <(1e-8))
@@ -2284,7 +2382,6 @@ int inv_iter(num_res)
         goto memFree;
       }
       omega = om_top / om_bot ; /* eigenvalue */
-      printf("OMEGA[%i]: %e\n",i+1,omega);
 
       for(jj=0;jj<K_size;jj++) {Mu_val[jj]=(uu_val[jj]/sqrt(om_bot)); } /* z(k+1) */
 
@@ -2322,15 +2419,16 @@ int inv_iter(num_res)
         {
           switch(sol_mode)
           {
-            case 1:
-              fprintf(stderr," Eigenvalue [%i]: %f (in iteration %i)\n",j,
-              (fabs(omega)),i+1);
-              break;
             case 2:
-              fprintf(stderr," Eigenvalue [%i]: %f (in iteration %i)\n",j,
-              sqrt(fabs(omega))/(2.0*3.141592),i+1);
+              lambda[j-1] =  sqrt(fabs(omega))/(2.0*3.141592) ;
+              break;
+            case 1:
+            default:
+              lambda[j-1] = fabs(omega) ;
               break;
           }
+          fprintf(stderr,"  Eigenvalue[%i]: %f (in iteration %i)\n",
+              j,lambda[j-1],i+1);
           rv = 0 ; /* we are converged */
           break ;
         }
@@ -2346,14 +2444,7 @@ int inv_iter(num_res)
     for (k=0; k<K_size; k++) { eig_val[j-1][k] = u_val[k] ; }
   }
 
-  /* TODO: some savings of results... */
-
 memFree:
-  for (i=0; i<num_res; i++)
-  {
-    free(eig_val[i]); eig_val[i] = NULL ;
-  }
-  free(eig_val); eig_val = NULL ;
   return(rv) ;
 }
 
@@ -2371,7 +2462,9 @@ char *argv[];
 	int   i ;
 #endif
 
-  fprintf(stderr,"\nDDFOR 1.1.2: direct stiffness method solver for statics of 2D frames.\n");
+  n_modal = 1 ; /* no. of mode shapes */
+
+  fprintf(stderr,"\nDDFOR 1.1.4: direct stiffness method solver for statics of 2D frames.\n");
   fprintf(stderr,"  See for details: http://github.com/jurabr/ddfor\n\n");
 
   if (argc < 2)
@@ -2490,6 +2583,18 @@ char *argv[];
     }
   }
 
+  /* Mode of solution */
+  if (argc > 5)
+  {
+    sol_mode = atoi(argv[5]) ;
+    if (sol_mode < 0) {sol_mode = 0 ;}
+    if (sol_mode > 2) 
+    {
+      n_modal  = sol_mode ;
+      sol_mode = 2 ;
+    }
+  }
+
   if (alloc_kf() != 0 )
   {
     free_data();
@@ -2509,6 +2614,7 @@ char *argv[];
 
   	if (fo != NULL) 
   	{ 
+    	res_struct(fo);
     	results(fo);
 #ifndef NO_PSEUDO_GFX
     	fprintf(fo,"\nScheme of structure with nodes numbers: \n\n");
@@ -2551,7 +2657,6 @@ char *argv[];
   	  disps_and_loads(0);
 
       inv_iter(1) ; /* one is enough */
-		  /* TODO */
   	  fprintf(stderr,"End of solution. \n");
     }
     else /* sol_mode == 2, modal analysis */
@@ -2559,11 +2664,19 @@ char *argv[];
   	  fprintf(stderr,"\nSolution (modal analysis): \n");
   	  stiff(0,0); 
       for (i=0; i<K_size; i++) { u_val[i] = 1.0 ; }
-  	  disps_and_loads(0);
-      inv_iter(2) ;
-      /* TODO */
+      /* use the command-line parameter as a numer of shapes: */
+  	  disps_and_loads(0); 
+      inv_iter(n_modal) ;
   	  fprintf(stderr,"End of solution. \n");
     }
+    
+    if (fo != NULL) 
+  	{ 
+    	res_struct(fo); 
+    	eiresults(fo); 
+    	fclose(fo);
+  	}
+
 	}
 #endif
 
