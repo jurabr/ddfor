@@ -603,7 +603,7 @@ int solve_eqs()
     normRes = vec_norm(r, n);
     normX   = vec_norm(u_val, n);
 
-    if (normRes  <= ((1e-5)*((normA*normX) + normB)) ) 
+    if (normRes  <= ((1e-3)*((normA*normX) + normB)) ) 
     {
       converged = 1;
       break;
@@ -952,11 +952,11 @@ int lc;
       A=(xi[2]-xi[1])*(yi[1]-yi[0]);
       if (A <=0)
       {
-        printf("[E]: Yero area element (%i)!\n",i+1);
+        printf("[E]: Zero area element (%i)!\n",i+1);
         continue;
       }
     } /* oops, zero area element */
-
+    printf("A= %e\n", A);
 	  a = min_4(xi);
 	  b = max_4(xi);
 	  c = min_4(yi);
@@ -1018,12 +1018,16 @@ int lc;
     /* integration start: */
     for (jj=0; jj<4; jj++)
     {
+    #if 0
 	    tx = (2.0*xj[jj]-a-b)/(b-a);
 	    ty = (2.0*yj[jj]-c-d)/(d-c);
 
 	    xjj = (((b-a)*tx)+b+a)/2.0;
 	    yjj = (((d-c)*ty)+d+c)/2.0;
-
+#else
+    xjj = (b-a)*xj[jj]/2.0+(b+a)/2.0;
+    yjj = (d-c)*yj[jj]/2.0+(d+c)/2.0;
+#endif
       B[0][3] = -2.0 ;
       B[0][6] = -6.0*xjj ;
       B[0][7] = -2.0*yjj ;
@@ -1133,20 +1137,19 @@ int lc;
       {
         for (m=0; m<12; m++)
         {
-          ke[k][m] += SBDBS[k][m] ;
+          ke[k][m] += SBDBS[k][m]  ;
         }
       }
     } /* end of integration */
 
-    /* Multiplication bu area */
+   /* Multiplication by area */
     for (k=0; k<12; k++)
     {
       for (m=0; m<12; m++)
       {
-        ke[k][m] *= A*A ;
+        ke[k][m] *= tl[i] *A*A*(b-a)*(d-c)/4.0;
       }
     }
-
     /* TODO: print K matrix !!! */
 #if 0
     printf("\nKe[%i] in local coordinates:\n",i+1);
@@ -1377,13 +1380,25 @@ void results(fw)
 FILE *fw;
 {
   int i;
-
+  float max = 0.0 ;
+  float min = 0.0 ;
+  int imax = 0 ;
+  int imin = 0 ;
+  
   fprintf(fw,"\nDEFORMATIONS:\n");
   fprintf(fw," Node       W       Rotation X    Rotation Y:\n");
   for (i=0; i<n_nodes; i++)
   {
+    if (i == 0)
+    { 
+       max = u_val[3*i] ;
+       min = max ;
+    }
     fprintf(fw," %4d %e %e %e\n", i+1, u_val[3*i], u_val[3*i+1], u_val[3*i+2]);
+    if (max < u_val[3*i]) { max = u_val[3*i] ; imax = i+1 ; }
+    if (min > u_val[3*i]) { min = u_val[3*i] ;  imin = i+1 ; }
   }
+  fprintf(fw,"\nMax (%4i) w = %f\nMin (%4i) w = %f\n", imax,max,imin,min);
 
   for (i=0; i<n_disps; i++)
   {
