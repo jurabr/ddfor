@@ -112,9 +112,23 @@ int comp_out(FILE *fw)
 	for (i=1; i<m; i++) { fprintf(fw,"%i 1 0 %i\n",i*(n+1)+1,gr); }
 	for (i=1; i<m; i++) { fprintf(fw,"%i 1 0 %i\n",(i+1)*(n+1),gr); }
 
-	/* force in the middle : */
+  /* load(s): */
+#if 0 /* force in the middle : */
 	n1 = (int)(((n+1)*(m+1))/2+1);
   fprintf(fw,"1\n%i 1 %e %i\n",n1,F,gr); 
+#else /* continuous load */
+  n2 = (n+1)*(m+1) - ( (n*2)+(m*2)) ;
+
+  fprintf(fw,"%i\n",n2);
+  for (j=1; j<(m); j++)
+  {
+    for (i=1; i<(n); i++)
+    {
+      n1 = (j*(n+1))+i+1 ;
+      fprintf(fw,"%i 1 %e %i\n",n1,F/(float)n2,gr); 
+    }
+  }
+#endif
 
   return(0);
 }
