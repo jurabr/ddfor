@@ -2025,8 +2025,32 @@ double *mpos; /* position of max M absolute from 1st node */
 }
 #endif
 
-/** Plot data (model geometry) to text console */
 #ifndef NO_PSEUDO_GFX
+/** Saves data to pbm (quick and dirty way) */
+void pseudo_pbm(fw, x, y, fld)
+FILE *fw;
+int x;
+int y;
+char **fld;
+{
+  int i, j;
+	char nula = '0' ;
+
+  fprintf(fw,"# P1\n");
+  fprintf(fw,"# %i %i\n",x,y);
+	for (i=0; i<y; i++)
+	{
+		for (j=0; j<x; j++)
+		{
+			if (fld[j][i] !=' ') nula = '1' ;
+			else                 nula = '0' ;
+		  fprintf(fw,"%c ",nula);
+		}
+		fprintf(fw,"\n");
+	}
+}
+
+/** Plot data (model geometry) to text console */
 void pseudo_geom(fw, mode)
 FILE *fw;
 int   mode;
