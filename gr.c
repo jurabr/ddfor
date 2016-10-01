@@ -302,7 +302,7 @@ void plot_force(int node, int type, double val, int size0)
               line_to(x, y);
 
               move_to(x+2*size, y-2*size);
-              pldbl(val);
+              pldbl(val/1000);
             }
             else
             {
@@ -313,7 +313,7 @@ void plot_force(int node, int type, double val, int size0)
               line_to(x, y);
 
               move_to(x-4*size, y-2*size);
-              pldbl(val);
+              pldbl(val/1000);
             }
             break ;
     case 2: /* vertical force */
@@ -326,7 +326,7 @@ void plot_force(int node, int type, double val, int size0)
               line_to(x, y);
 
               move_to(x, y+4*size);
-              pldbl(val);
+              pldbl(val/1000);
             }
             else
             {
@@ -337,7 +337,7 @@ void plot_force(int node, int type, double val, int size0)
               line_to(x, y);
 
               move_to(x, y-5*size);
-              pldbl(val);
+              pldbl(val/1000);
             }
             break ;
     case 3: /* bending moment */
@@ -354,7 +354,7 @@ void plot_force(int node, int type, double val, int size0)
               line_to(x+3*size, y-size);
 
               move_to(x-size, y-4*size);
-              pldbl(val);
+              pldbl(val/1000);
             }
             else
             {
@@ -369,7 +369,7 @@ void plot_force(int node, int type, double val, int size0)
               line_to(x-3*size, y-size);
 
               move_to(x-size, y-5*size);
-              pldbl(val);
+              pldbl(val/1000);
             }
             break ;
   }
