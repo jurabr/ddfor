@@ -414,6 +414,10 @@ void plot_eload (int elem, int type, double v1, double v2, int size)
           line_to((int)vx0,(int)vy0);
           move_to((int)vx,(int)vy);
         }
+        vx = x1 + L*c/2.0 ;
+        vy = y1 + L*s/2.0 ;
+        move_to((int)vx,(int)vy-(int)(2*size));
+        pldbl((v1+v2)/2.0/1000);
       break ;
     case 3: /* TODO  global x */ break ;
     case 4: /* TODO  global y */ break ;
